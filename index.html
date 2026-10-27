@@ -35,10 +35,11 @@ button.on{border-color:var(--a);color:var(--a)}
 #log{height:140px;overflow:auto;font-size:12px;color:var(--m);border-top:1px solid var(--l);padding-top:6px}
 #win{position:fixed;inset:0;background:#000d;display:none;align-items:center;justify-content:center;z-index:99;text-align:center;padding:20px}
 #win div{max-width:440px;border:2px solid var(--g);background:var(--p);padding:28px;border-radius:4px}
+.crate.glow{animation:cg 1s infinite alternate}@keyframes cg{to{box-shadow:0 0 12px 2px var(--c);border-color:var(--c)}}
 @media(max-width:900px){body{grid-template-columns:1fr;height:auto}.z{overflow:visible}#pile{min-height:380px}}
 </style></head><body>
 <section class="z"><h2>The junkyard</h2><div class="row" id="tabs"></div><div id="pile"></div>
-<div class="row"><button id="next" class="on">Next pile</button><small id="hint">Drag trash out of the pile. Drag scrap onto the grid.</small></div></section>
+<div class="row"><button id="next" class="on">Next pile</button><small id="hint">Drag trash off the mound to find scrap. Drag unwanted grid items back onto the pile to discard them.</small></div></section>
 <section class="z"><h2>Workshop</h2><div class="row" id="bench"></div><div id="gridwrap"><div id="grid"></div></div>
 <h2>Crates</h2><div class="row" id="crates"><small>Craft a Crate Dock to unlock.</small></div></section>
 <section class="z"><h2>Blueprints</h2><div id="bps" class="row" style="flex-direction:column;flex:1;flex-wrap:nowrap;overflow:auto"></div>
@@ -73,6 +74,26 @@ const R=[
 ['bot2','Scavenger Bot v2',[['chip',0,0],['chip',1,0],['motor',0,1],['motor',0,2],['bar',2,0],['bar',3,0]],'Also fills bars, chips, glass every 3s'],
 ['antenna','Long Antenna',[['bar',0,0],['gold',1,0]],'Makes a Long Antenna','antenna'],
 ['radio','Radio Transceiver',[['coil',0,0],['chip',2,0],['antenna',3,0],['core',0,2]],'PHASE 1 FINALE']];
+const ST={vice:0,bowl:0,lever:0,ext1:0,dock2:0,cleaner:1,lens:1,spool:1,pipe:1,blower:1,torch:1,ext2:2,bot1:2,jack:2,dock3:3,bot2:3,antenna:3,radio:3};
+const DESC={vice:'A bolted clamp that straightens bent steel. Unlocks the Vice Clamp bench: bent bars become 1x3 Steel Bars.',
+bowl:'A scrap basin for scrubbing and storage. Makes a Bowl Frame, needed for the Cleaning Station, crate docks and Bot v1.',
+lever:'A sturdy steel prybar used to force open sealed doors. Unlocks Depth 2: Sealed Container.',
+ext1:'A wider bench with room to think. Grid grows from 4x4 to 4x6.',
+dock2:'Sturdy bins bolted under the bench. Unlocks 2 crates that each hold one item type without using grid space.',
+cleaner:'A basin with a scrub brush. Unlocks the Cleaning Station bench: dirty chips become Microchips.',
+lens:'Salvaged glass that sees through trash. Hidden items pulse through the pile every 3 seconds.',
+spool:'A hand-cranked winder. Unlocks the Wire Spooler bench: 3 Tangled Wire become a Copper Coil.',
+pipe:'Rolled scrap tubing. Makes a Pipe for the Trash Blower and Blowtorch.',
+blower:'A compressed-air nozzle. Click trash to blast it away, no dragging needed.',
+torch:'Chemical fuel through a pipe, lit by a chip. Melts the security gate. Unlocks Depth 3: Engine Pit and the Motor Unseizer bench.',
+ext2:'A full-size workshop table. Grid grows to 6x6.',
+bot1:'A scrap-crawling bot on a salvaged motor. Assign it to a crate to auto-fill scrap, wire or plastic every 5s.',
+jack:'A pneumatic ram built from a gear and a motor. Lifts the fallen crane. Unlocks Depth 4: Relic Vault.',
+dock3:'Reinforced racks. Unlocks 3 more crates.',
+bot2:'A faster, sturdier bot. Upgrades a crate to also auto-fill bars, chips and glass every 3s.',
+antenna:'A tall mast tipped with gold. Makes a Long Antenna for the Radio.',
+radio:'Your link to the surface. Finishes Phase 1 and opens the Outpost.'};
+R.forEach(r=>r[3]=DESC[r[0]]);
 const BN={vice:['Vice Clamp','bent bar'],cleaner:['Cleaning Station','dirty chip'],spool:['Wire Spooler','3 tangled wire'],unseize:['Motor Unseizer','seized motor']};
 const BI={vice:'bent',cleaner:'dchip',spool:'wire',unseize:'smotor'};
 const EL=[0,['scrap','wire','plastic'],['scrap','wire','plastic','bar','chip','glass']];
@@ -80,9 +101,9 @@ const FX={vice:S=>S.f.vice=1,cleaner:S=>S.f.cleaner=1,spool:S=>S.f.spool=1,lens:
 ext1:S=>S.rows=6,ext2:S=>S.cols=6,dock2:()=>dock(2),dock3:()=>dock(3),torch:S=>{S.d=Math.max(S.d,3);S.f.unseize=1},jack:S=>S.d=4,
 bot1:S=>S.bots[1]++,bot2:S=>S.bots[2]++,radio:()=>$('win').style.display='flex'};
 let S,sel=null,drag=null,scrub=0,L=[];
-const def=()=>({d:1,cur:1,f:{},rows:4,cols:4,cr:[],bots:[0,0,0],g:[],seen:{},done:{},t:0,n:1,sp:0});
+const def=()=>({d:1,cur:1,f:{},rows:4,cols:4,cr:[],bots:[0,0,0],g:[],seen:{},done:{},t:0,n:1,sp:0,nb:{}});
 try{S=JSON.parse(localStorage.getItem('junk1'))}catch(e){}
-if(!S||!S.g)S=def();
+if(!S||!S.g)S=def();S.nb=S.nb||{};
 const save=()=>{try{localStorage.setItem('junk1',JSON.stringify(S))}catch(e){}};
 let ac;function snd(f=440,d=.08,ty='square',v=.04){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 function log(m){L.unshift(m);L=L.slice(0,30);$('log').innerHTML=L.map(x=>'<div>'+x+'</div>').join('')}
@@ -91,13 +112,14 @@ const fits=(t,x,y,ig)=>{const[,w,h]=I[t];if(x<0||y<0||x+w>S.cols||y+h>S.rows)ret
 const spot=t=>{for(let y=0;y<S.rows;y++)for(let x=0;x<S.cols;x++)if(fits(t,x,y))return[x,y]};
 const put=(t,x,y)=>{S.g.push({id:S.n++,t,x,y});see(t)};
 function give(t){const s=spot(t);if(s){put(t,...s);ui();snd(520)}else setTimeout(()=>give(t),600)}
+function unlockBP(){const n=R.filter(r=>ST[r[0]]==S.d-1);n.forEach(r=>S.nb[r[0]]=1);log('<b style="color:var(--g)">Milestone! New blueprints: '+n.map(r=>r[1]).join(', ')+'</b>');[523,659,784].forEach((f,i)=>setTimeout(()=>snd(f,.2,'triangle',.06),i*120))}
 function dock(k){for(let i=0;i<k;i++)S.cr.push({item:null,n:0,bot:0,acc:0})}
 function mk(t,cs){const[n,w,h,c]=I[t],e=document.createElement('div');e.className='it';e.style.cssText=`width:${w*cs-3}px;height:${h*cs-3}px;background:${c};margin:1px`;e.textContent=n;return e}
 function find(p){for(const a of S.g)if(a.t==p[0][0]){const ox=a.x-p[0][1],oy=a.y-p[0][2],its=[];if(p.every(([t,x,y])=>{const o=S.g.find(q=>q.t==t&&q.x==ox+x&&q.y==oy+y);if(o)its.push(o);return o}))return its}}
 const matches=()=>R.filter(r=>r[4]||!S.done[r[0]]).map(r=>({r,its:find(r[2])})).filter(m=>m.its);
 function assemble(m){const[id,,,,out]=m.r,keep=[...S.g];S.g=S.g.filter(o=>!m.its.includes(o));
  if(out){const s=spot(out);if(!s){S.g=keep;log('No room for the result. Free up grid space.');return}put(out,...s)}
- else{S.done[id]=1;FX[id](S)}
+ else{const d0=S.d;S.done[id]=1;FX[id](S);if(S.d>d0)unlockBP()}
  log('Assembled: '+m.r[1]);if(sel==id)sel=null;snd(90,.2,'sawtooth',.09);setTimeout(()=>snd(660,.15),120);ui()}
 // ---------- drawing
 function drawGrid(){const g=$('grid');g.style.width=S.cols*CS+'px';g.style.height=S.rows*CS+'px';g.innerHTML='';
@@ -114,21 +136,26 @@ function ui(){
  $('crates').innerHTML=S.cr.length?'':'<small>Craft a Crate Dock to unlock.</small>';
  S.cr.forEach((c,i)=>{const e=document.createElement('div');e.className='crate'+(c.item?'':' e');e.dataset.i=i;
   e.innerHTML=c.item?`${I[c.item][0]}<br><b id="cn${i}">${c.n}</b>${c.bot?'<br><small>Bot v'+c.bot+'</small>':''}`:'Empty<br><small>drop an item</small>';
-  e.onclick=()=>{if(c.n>0){const s=spot(c.item);if(s){put(c.item,...s);c.n--;snd(400,.05);ui()}else log('Grid is full.')}};
+  e.onclick=()=>{if(c.n>0){const s=spot(c.item);if(s){put(c.item,...s);c.n--;if(!c.n&&!c.bot)c.item=null;snd(400,.05);ui()}else log('Grid is full.')}};
   [1,2].forEach(t=>{if(S.bots[t]>0&&c.item&&EL[t].includes(c.item)&&c.bot<t&&!(t==1&&c.bot)){const b=document.createElement('button');b.textContent='+ Bot v'+t;b.onclick=ev=>{ev.stopPropagation();S.bots[t]--;if(c.bot)S.bots[c.bot]++;c.bot=t;ui()};e.append(b)}});
   $('crates').append(e)});
- $('bps').innerHTML='';R.forEach(r=>{if(!r[2].every(p=>S.seen[p[0]]))return;const d=S.done[r[0]]&&!r[4],cnt={};r[2].forEach(p=>cnt[p[0]]=(cnt[p[0]]||0)+1);
+ $('bps').innerHTML='';R.forEach(r=>{if(ST[r[0]]>S.d-1||(S.done[r[0]]&&!r[4]))return;const d=0,cnt={};r[2].forEach(p=>cnt[p[0]]=(cnt[p[0]]||0)+1);
   const e=document.createElement('div');e.className='bp'+(sel==r[0]?' s':'')+(d?' d':'');
-  e.innerHTML=`<b>${d?'✓ ':''}${r[1]}</b><br><small>${Object.entries(cnt).map(([t,n])=>n+'x '+I[t][0]).join(', ')}</small><br><small>${r[3]}</small>`;
-  e.onclick=()=>{sel=sel==r[0]?null:r[0];drawGrid();ui()};$('bps').append(e)});
+  e.innerHTML=`<b>${S.nb[r[0]]?'<span style="color:var(--c)">NEW </span>':''}${r[1]}</b><br><small>${Object.entries(cnt).map(([t,n])=>n+'x '+I[t][0]).join(', ')}</small><br><small>${r[3]}</small>`;
+  e.onclick=()=>{delete S.nb[r[0]];sel=sel==r[0]?null:r[0];drawGrid();ui()};$('bps').append(e)});
  save()}
 // ---------- pile
-function spawn(){const P=$('pile');P.innerHTML='';const W=P.clientWidth,H=P.clientHeight,nI=rnd([1,1,2]),cs=[];
- for(let i=0;i<nI;i++){const t=rnd(DROPS[S.cur]),[,w,h]=I[t],x=rr(30,W-w*CS-30),y=rr(30,H-h*CS-30),e=mk(t,CS);see(t);
-  e.style.left=x+'px';e.style.top=y+'px';e.style.zIndex=1;const d={src:'p',t,e};e.onpointerdown=ev=>startDrag(ev,d);P.append(e);cs.push([x+w*CS/2,y+h*CS/2]);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function pileItem(t,x,y,z){const e=mk(t,CS),d={src:'p',t,e};e.style.left=x+'px';e.style.top=y+'px';e.style.zIndex=z;e.onpointerdown=ev=>startDrag(ev,d);$('pile').append(e);return d}
+function spawn(){const P=$('pile');P.innerHTML='';const W=P.clientWidth,H=P.clientHeight,hm=Math.min(H-30,W*.85),bw=Math.min(W/2-10,hm*.8),ay=H-15-hm;
+ const mound=fm=>{const f=Math.sqrt(rr(fm*fm,1));return[W/2+rr(-.9,.9)*bw*f,ay+f*hm]};
+ const bd=document.createElement('div');bd.style.cssText=`position:absolute;left:${W/2-bw}px;top:${ay}px;width:${bw*2}px;height:${hm}px;background:#1a1c21;clip-path:polygon(50% 0,100% 100%,0 100%)`;P.append(bd);
+ for(let i=0;i<24;i++){const[x,y]=mound(0),s=rr(18,38),e=document.createElement('div');e.style.cssText=`position:absolute;pointer-events:none;width:${s}px;height:${s*.7}px;left:${x-s/2}px;top:${y-s/2}px;background:${rnd(['#2b2d33','#33302d','#26282d'])};clip-path:polygon(10% 0,100% 20%,85% 100%,0 80%)`;P.append(e)}
+ const nI=rnd([1,1,2]),cs=[];
+ for(let i=0;i<nI;i++){const t=rnd(DROPS[S.cur]),[,w,h]=I[t],[mx,my]=mound(.45),x=clamp(mx-w*CS/2,5,W-w*CS-5),y=clamp(my-h*CS/2,5,H-h*CS-5),d=pileItem(t,x,y,1);see(t);cs.push([x+w*CS/2,y+h*CS/2]);
   if(S.f.lens){const r=document.createElement('div');r.className='ring';r.style.cssText=`left:${x-3}px;top:${y-3}px;width:${w*CS+6}px;height:${h*CS+6}px;animation-delay:${rr(0,2)}s`;P.append(r);d.ring=r}}
- const n=3+(Math.random()*3|0);
- for(let i=0;i<n+nI;i++){const s=rr(70,105),near=i<nI*2?cs[i%nI]:null,cx=near?near[0]+rr(-30,30):rr(s/2,W-s/2),cy=near?near[1]+rr(-30,30):rr(s/2,H-s/2);
+ const n=5+(Math.random()*3|0);
+ for(let i=0;i<n+nI;i++){const s=rr(60,90),near=i<nI*2?cs[i%nI]:null,[mx,my]=mound(0),cx=near?near[0]+rr(-25,25):mx,cy=near?near[1]+rr(-25,25):my;
   const e=document.createElement('div');e.className='tr';e.style.cssText=`width:${s}px;height:${s*rr(.7,1)}px;left:${cx-s/2}px;top:${cy-s/2}px;background:${rnd(['#4A4A4A','#555','#5a3a28','#4a4038'])};clip-path:${rnd(['polygon(10% 0,90% 10%,100% 70%,60% 100%,0 80%)','polygon(0 20%,40% 0,100% 30%,85% 100%,15% 90%)','polygon(20% 0,100% 0,90% 80%,40% 100%,0 60%)','polygon(0 0,70% 10%,100% 50%,70% 100%,10% 90%)'])}`;
   e.onpointerdown=ev=>startDrag(ev,{src:'t',e});P.append(e)}
  snd(150,.1,'triangle',.06);ui()}
@@ -136,17 +163,19 @@ const rmTrash=e=>{e.classList.add('pop');setTimeout(()=>e.remove(),160);snd(300,
 // ---------- drag & drop
 function startDrag(ev,d){ev.preventDefault();drag=d;const r=d.e.getBoundingClientRect();d.ox=ev.clientX-r.left;d.oy=ev.clientY-r.top;
  if(d.src=='t'){if(S.f.blower){drag=null;rmTrash(d.e);return}d.e.style.zIndex=9;return}
- d.gh=mk(d.t,CS);Object.assign(d.gh.style,{position:'fixed',pointerEvents:'none',zIndex:99,left:r.left+'px',top:r.top+'px'});document.body.append(d.gh);d.e.style.opacity=.3}
+ d.gh=mk(d.t,CS);Object.assign(d.gh.style,{position:'fixed',pointerEvents:'none',zIndex:99,left:r.left+'px',top:r.top+'px'});document.body.append(d.gh);d.e.style.opacity=.3;document.querySelectorAll('.crate').forEach(e=>{if(S.cr[+e.dataset.i].item==d.t)e.classList.add('glow')})}
 addEventListener('pointermove',ev=>{if(!drag)return;const d=drag;
  if(d.src=='t'){const pr=$('pile').getBoundingClientRect();d.e.style.left=ev.clientX-pr.left-d.ox+'px';d.e.style.top=ev.clientY-pr.top-d.oy+'px'}
  else{d.gh.style.left=ev.clientX-d.ox+'px';d.gh.style.top=ev.clientY-d.oy+'px'}});
 const take=d=>{if(d.src=='p'){d.e.remove();d.ring&&d.ring.remove()}else S.g=S.g.filter(o=>o!==d.o)};
 function endDrag(ev){if(!drag)return;const d=drag;drag=null;
  if(d.src=='t'){const r=$('pile').getBoundingClientRect();if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom)rmTrash(d.e);else d.e.style.zIndex='';return}
- d.gh.remove();d.e.style.opacity='';
+ d.gh.remove();d.e.style.opacity='';document.querySelectorAll('.glow').forEach(e=>e.classList.remove('glow'));
  const tg=document.elementFromPoint(ev.clientX,ev.clientY),b=tg&&tg.closest('.bench'),c=tg&&tg.closest('.crate');
  if(b)return bench(b.dataset.b,d);
  if(c)return crateIn(S.cr[+c.dataset.i],d);
+ const pr=$('pile').getBoundingClientRect();
+ if(d.src=='g'&&ev.clientX>=pr.left&&ev.clientX<=pr.right&&ev.clientY>=pr.top&&ev.clientY<=pr.bottom){take(d);const[,w,h]=I[d.t];pileItem(d.t,clamp(ev.clientX-d.ox-pr.left,0,pr.width-w*CS),clamp(ev.clientY-d.oy-pr.top,0,pr.height-h*CS),4);snd(140,.1,'triangle');ui();return}
  const gr=$('grid').getBoundingClientRect();
  if(ev.clientX<gr.left||ev.clientX>gr.right||ev.clientY<gr.top||ev.clientY>gr.bottom)return;
  const x=Math.round((ev.clientX-d.ox-gr.left)/CS),y=Math.round((ev.clientY-d.oy-gr.top)/CS);

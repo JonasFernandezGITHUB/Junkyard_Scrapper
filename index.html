@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Junkyard — Phase 1</title>
+<title>Junkyard Scrapper</title>
 <style>
 :root{--bg:#0d0e11;--p:#15171c;--l:#2a2d35;--t:#d6d6da;--m:#8b8f99;--a:#D97706;--g:#facc15;--c:#22d3ee;color-scheme:dark}
 *{box-sizing:border-box}
@@ -29,9 +29,18 @@ button.on{border-color:var(--a);color:var(--a)}
 .crate{width:96px;border:1px solid var(--a);border-radius:3px;padding:6px;text-align:center;cursor:pointer;font-size:12px}
 .crate.e{border-style:dashed;border-color:#3b3f4a}
 .crate button{padding:2px 6px;font-size:11px;margin-top:4px}
-.bp{border:1px solid var(--l);border-radius:3px;padding:6px 8px;cursor:pointer}
-.bp.s{border-color:var(--c)}.bp.d{opacity:.45}
-.bp b{color:var(--g)}
+.bp{position:relative;padding:9px 10px 9px 20px;cursor:pointer;background:linear-gradient(180deg,#1d2026,#16181d);border:1px solid #3b3f4a;border-radius:2px;box-shadow:0 2px 0 #0a0b0d,inset 0 0 0 1px #00000055;transition:border-color .12s,transform .12s}
+.bp::before{content:"";position:absolute;left:0;top:0;bottom:0;width:9px;background:repeating-linear-gradient(135deg,#facc15 0 5px,#111 5px 10px);opacity:.85}
+.bp::after{content:"";position:absolute;right:6px;top:6px;width:6px;height:6px;border-radius:50%;background:#4b5059;box-shadow:inset -1px -1px 0 #0008}
+.bp:hover{border-color:var(--a);transform:translateX(2px)}
+.bp.s{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 2px 0 #0a0b0d}
+.bp.rdy::before{background:repeating-linear-gradient(135deg,#22d3ee 0 5px,#111 5px 10px)}
+.bp .nm{display:block;color:var(--g);font-weight:700;font-size:14px;letter-spacing:.04em;text-shadow:0 1px 0 #000}
+.tag{font-size:10px;font-weight:700;padding:0 5px;margin-left:6px;border-radius:2px;color:#000;background:var(--c);vertical-align:middle}
+.tag.rd{background:var(--g)}
+.igs{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:7px}
+.ig{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:12px}
+.ic{width:16px;height:16px;display:inline-block}
 #log{height:140px;overflow:auto;font-size:12px;color:var(--m);border-top:1px solid var(--l);padding-top:6px}
 #win{position:fixed;inset:0;background:#000d;display:none;align-items:center;justify-content:center;z-index:99;text-align:center;padding:20px}
 #win div{max-width:440px;border:2px solid var(--g);background:var(--p);padding:28px;border-radius:4px}
@@ -63,7 +72,7 @@ body.eq,body.eq *{cursor:none!important}
 .ob svg{width:100%;height:100%;display:block;pointer-events:none;overflow:visible}
 .pb{position:absolute;left:10%;right:10%;bottom:4px;height:5px;background:#000a;border-radius:3px;display:none;pointer-events:none}
 .pb b{display:block;height:100%;width:0;background:var(--g);border-radius:3px}
-#tip{position:fixed;z-index:1000;pointer-events:none;background:#000e;border:1px solid var(--a);color:var(--g);padding:4px 8px;border-radius:3px;display:none;font-size:12px;white-space:nowrap}
+#tip{position:fixed;z-index:1000;pointer-events:none;background:#000e;border:1px solid var(--a);color:var(--g);padding:4px 8px;border-radius:3px;display:none;font-size:12px;max-width:280px}
 .pt{position:fixed;z-index:998;pointer-events:none;animation:fly var(--l,.6s) ease-out forwards}
 @keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
 /* unstable pile */
@@ -72,14 +81,17 @@ body.eq,body.eq *{cursor:none!important}
 .ko{position:absolute;left:8px;top:38px;z-index:20;border-color:#ef4444;color:#fecaca;background:#3b1111}
 .quake{animation:qk .12s 6}
 @keyframes qk{25%{transform:translate(3px,-2px)}75%{transform:translate(-3px,2px)}}
+.it.rev{animation:rev .35s ease-out}@keyframes rev{from{transform:scale(1.5)}}
+button.lk{opacity:.35;cursor:not-allowed}
+#bps{gap:14px}
 @media(max-width:900px){body{grid-template-columns:1fr;height:auto}.z{overflow:visible}#pile{min-height:380px}}
 </style></head><body>
 <section class="z"><h2>The junkyard</h2><div class="row" id="tabs"></div>
 <div class="row"><button id="auto">[ AUTO SEARCH ]</button><div id="apw"><div id="apb"></div></div><small id="astat"></small></div>
-<div class="row"><small>Auto-pockets</small><div class="row" id="pockets"></div></div>
+<div class="row"><small>Auto-pockets</small><div class="row" id="pockets"></div><button id="takeall" title="Move every pocket item to the grid or crates">Take all</button></div>
 <div id="pile"></div>
 <div id="belt"></div>
-<div class="row"><button id="next" class="on">Next pile</button><small id="hint">Drag trash off the mound to find scrap. Hold a tool from the toolbelt over matching obstacles. Drag unwanted grid items back onto the pile to discard them.</small></div></section>
+<div class="row"><button id="next" class="on">Next pile</button><small id="hint">Drag trash off the mound to find scrap. Hold a tool from the toolbelt over matching obstacles. Drag unwanted grid items back onto the pile to discard them, or drag pocket items onto it to destroy them.</small></div></section>
 <section class="z"><h2>Workshop</h2><div class="row" id="bench"></div><div id="gridwrap"><div id="grid"></div></div>
 <h2>Crates</h2><div class="row" id="crates"><small>Craft a Crate Dock to unlock.</small></div></section>
 <section class="z"><h2>Blueprints</h2><div id="bps" class="row" style="flex-direction:column;flex:1;flex-wrap:nowrap;overflow:auto;align-items:stretch"></div>
@@ -135,7 +147,7 @@ const R=[
 ['bowl','Bowl Frame',[['scrap',0,0],['scrap',0,1],['scrap',1,1]],'Makes a Bowl Frame','bowl'],
 ['lever','Prying Crowbar',[['bar',0,0],['scrap',0,3]],'Unlocks Depth 2: Sealed Container'],
 ['pock1','Pocket Expansion v1',[['bowl',0,0],['plastic',2,0],['scrap',2,1]],''],
-['cleaner','Cleaning Station',[['glass',0,0],['plastic',1,0],['bowl',0,1]],'Unlocks the Cleaning Station (dirty chip to chip)'],
+['cleaner','Cleaning Station',[['cell',0,0],['glass',1,0],['dchip',2,0],['bowl',1,1]],'Unlocks the Cleaning Station (dirty chip to chip)'],
 ['lens','Sifting Lens',[['scrap',0,0],['scrap',1,0],['glass',0,1]],'Hidden items pulse through the trash'],
 ['ext1','Workbench Ext. 1',[['scrap',0,0],['scrap',1,0],['scrap',2,0],['bar',0,1],['bar',2,1]],'Grid grows to 4x6'],
 ['dock2','Basic Crate Dock',[['scrap',0,0],['scrap',1,0],['scrap',2,0],['bowl',0,1]],'Unlocks 2 crate docks'],
@@ -161,37 +173,37 @@ lever:'A sturdy steel crowbar. Hold it from the toolbelt and drag across Wooden 
 pock1:'Roomier pockets for the auto-searcher. Auto-Pockets hold 4 items instead of 2.',
 ext1:'A wider bench with room to think. Grid grows from 4x4 to 4x6.',
 dock2:'Sturdy bins bolted under the bench. Unlocks 2 crates that each hold one item type without using grid space.',
-cleaner:'A basin with a scrub brush. Unlocks the Cleaning Station bench: dirty chips become Microchips.',
+cleaner:'A basin with a scrub brush, filled with chemical cell fluid. Needs Depth 2 salvage: a Chemical Cell, Glass Shard and Dirty Chip. Unlocks the Cleaning Station bench: dirty chips become Microchips.',
 lens:'Salvaged glass that sees through trash. Hidden items pulse through the pile every 3 seconds.',
-spool:'A hand-cranked winder. Unlocks the Wire Spooler bench: 3 Tangled Wire become a Copper Coil.',
+spool:'A hand-cranked winder. Unlocks the Wire Spooler bench: one Tangled Wire becomes a Copper Coil.',
 pipe:'Rolled scrap tubing. Makes a Pipe for the Trash Blower and Blowtorch.',
 blower:'A compressed-air nozzle. Click trash to blast it away, no dragging needed.',
 torch:'Chemical fuel through a pipe, lit by a chip. Hold it over Iron Plates for 1.5s to melt them. Unlocks Depth 3: Engine Pit and the Motor Unseizer bench.',
-aspd1:'Better sweeping gear. Auto-Search sweeps every 5s instead of 8s.',
+aspd1:'Better sweeping gear. Auto-Search sweeps every 20s instead of 30s.',
 ext2:'A full-size workshop table. Grid grows to 6x6.',
 bot1:'A scrap-crawling bot on a salvaged motor. Assign it to a crate to auto-fill scrap, wire or plastic every 5s.',
 jack:'A pneumatic ram built from a gear and a motor. Hold it over Concrete for 1.5s to shatter it. Unlocks Depth 4: Relic Vault.',
 pock2:'A full pocket rack. Auto-Pockets hold 8 items.',
-aspd2:'A motorized sweeper arm. Auto-Search sweeps every 3s.',
+aspd2:'A motorized sweeper arm. Auto-Search sweeps every 12s.',
 dock3:'Reinforced racks. Unlocks 3 more crates.',
 bot2:'A faster, sturdier bot. Upgrades a crate to also auto-fill bars, chips and glass every 3s.',
 antenna:'A tall mast tipped with gold. Makes a Long Antenna for the Radio.',
 radio:'Your link to the surface. Finishes Phase 1 and opens the Outpost.'};
 R.forEach(r=>r[3]=DESC[r[0]]);
-const BN={vice:['Vice Clamp','bent bar'],cleaner:['Cleaning Station','dirty chip'],spool:['Wire Spooler','3 tangled wire'],unseize:['Motor Unseizer','seized motor']};
+const BN={vice:['Vice Clamp','bent bar'],cleaner:['Cleaning Station','dirty chip'],spool:['Wire Spooler','tangled wire'],unseize:['Motor Unseizer','seized motor']};
 const BI={vice:'bent',cleaner:'dchip',spool:'wire',unseize:'smotor'};
 const EL=[0,['scrap','wire','plastic'],['scrap','wire','plastic','bar','chip','glass']];
 const nop=()=>{};
 const FX={vice:S=>S.f.vice=1,cleaner:S=>S.f.cleaner=1,spool:S=>S.f.spool=1,lens:S=>S.f.lens=1,blower:S=>S.f.blower=1,lever:S=>S.d=Math.max(S.d,2),
 ext1:S=>S.rows=6,ext2:S=>S.cols=6,dock2:()=>dock(2),dock3:()=>dock(3),torch:S=>{S.d=Math.max(S.d,3);S.f.unseize=1},jack:S=>S.d=4,
 bot1:S=>S.bots[1]++,bot2:S=>S.bots[2]++,radio:()=>$('win').style.display='flex',aspd1:nop,aspd2:nop,pock1:nop,pock2:nop};
-let S,sel=null,drag=null,scrub=0,L=[],eq=null,px=0,py=0,lx=0,ly=0,lt=0,raf=0,lastS=0,PI=[],OBS=[],aacc=0,lastStat='';
+let S,sel=null,drag=null,scrub=0,L=[],lastMoved=false,eq=null,px=0,py=0,lx=0,ly=0,lt=0,raf=0,lastS=0,PI=[],OBS=[],aacc=0,lastStat='';
 const def=()=>({d:1,cur:1,f:{},rows:4,cols:4,cr:[],bots:[0,0,0],g:[],seen:{},done:{},t:0,n:1,sp:0,nb:{},auto:false,pk:[]});
 try{S=JSON.parse(localStorage.getItem('junk1'))}catch(e){}
 if(!S||!S.g)S=def();S.nb=S.nb||{};S.pk=S.pk||[];S.auto=!!S.auto;
-const save=()=>{try{localStorage.setItem('junk1',JSON.stringify(S))}catch(e){}};
+const save=()=>{try{S.ts=Date.now();localStorage.setItem('junk1',JSON.stringify(S))}catch(e){}};
 const vis=r=>ST[r[0]]<=S.d-1&&(r[4]||!S.done[r[0]])&&(!PRE[r[0]]||S.done[PRE[r[0]]]);
-const pcap=()=>S.done.pock2?8:S.done.pock1?4:2,aint=()=>S.done.aspd2?3:S.done.aspd1?5:8;
+const pcap=()=>S.done.pock2?8:S.done.pock1?4:2,aint=()=>S.done.aspd2?12:S.done.aspd1?20:30;
 let ac;function snd(f=440,d=.08,ty='square',v=.04){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
 function nz(d=.15,v=.08,f=1500){try{ac=ac||new AudioContext();const n=ac.sampleRate*d|0,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const s=ac.createBufferSource(),g=ac.createGain(),fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=f;g.gain.value=v;s.buffer=b;s.connect(fl);fl.connect(g);g.connect(ac.destination);s.start()}catch(e){}}
 function burst(x,y,cols,n,sp,life=.6,sz=5){for(let i=0;i<n;i++){const e=document.createElement('i'),a=rr(0,6.283),d=rr(.3,1)*sp;e.className='pt';e.style.cssText=`left:${x}px;top:${y}px;width:${sz*rr(.6,1.4)}px;height:${sz*rr(.6,1.4)}px;background:${rnd(cols)};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d+sp*.3}px;--r:${rr(-360,360)}deg;--l:${life*rr(.7,1.2)}s`;document.body.append(e);setTimeout(()=>e.remove(),life*1300)}}
@@ -229,26 +241,29 @@ function drawAuto(){const cap=pcap(),box=$('pockets');box.innerHTML='';
  for(let i=0;i<cap;i++){const o=S.pk[i],s=document.createElement('div');s.className='pk'+(o?' f':'');
   if(o){const[,w,h]=I[o.t],e=mk(o.t,Math.min(40/Math.max(w,h),24));s.append(e);s.onpointerdown=ev=>startDrag(ev,{src:'k',o,t:o.t,e});s.onclick=()=>pkTake(o)}
   box.append(s)}
- $('auto').className=S.auto?'on':'';statText()}
+ $('auto').className=S.auto?'on':'';$('takeall').disabled=!S.pk.length;statText()}
 function statText(){const f=S.pk.length>=pcap(),t=!S.auto?'OFF':f?'POCKETS FULL':'ON · sweep every '+aint()+'s';if(t!==lastStat){lastStat=t;$('astat').textContent=t}}
 function pkTake(o){const s=spot(o.t);
  if(s){put(o.t,...s);S.pk=S.pk.filter(x=>x!==o);snd(400,.05);ui();return}
  const c=S.cr.find(c=>c.item==o.t)||S.cr.find(c=>!c.item);
  if(c){c.item=o.t;c.n++;S.pk=S.pk.filter(x=>x!==o);snd(260,.08);ui()}else log('No room in the grid or crates.')}
 function ui(){
- $('tabs').innerHTML='';for(let d=1;d<=4;d++){const b=document.createElement('button');b.textContent=d+'. '+DN[d];b.className=S.cur==d?'on':'';b.disabled=d>S.d;b.title=d>S.d?'Craft: '+NEED[d]:'';b.onclick=()=>{S.cur=d;ui()};$('tabs').append(b)}
- $('bench').innerHTML=Object.keys(BN).map(k=>`<div class="bench ${S.f[k]?'up':'lock'} ${k=='cleaner'&&scrub?'scrub':''}" data-b="${k}"><b>${S.f[k]?BN[k][0]:'Locked'}</b><br><small>${S.f[k]?'drop '+BN[k][1]+(k=='spool'?' ('+S.sp+'/3)':''):'&nbsp;'}</small></div>`).join('');
+ $('tabs').innerHTML='';for(let d=1;d<=4;d++){const b=document.createElement('button');b.textContent=d+'. '+DN[d];b.className='tp'+(S.cur==d?' on':'')+(d>S.d?' lk':'');b._tip=d>S.d?'Locked. Craft the '+NEED[d]+' to open.':'<b>Can find here:</b><br>'+[...new Set(DROPS[d])].map(t=>`<span style="color:${I[t][3]};font-weight:700">${I[t][0]}</span>`).join(', ');b.onclick=()=>{if(d>S.d)return;S.cur=d;ui()};$('tabs').append(b)}
+ $('bench').innerHTML=Object.keys(BN).map(k=>`<div class="bench ${S.f[k]?'up':'lock'} ${k=='cleaner'&&scrub?'scrub':''}" data-b="${k}"><b>${S.f[k]?BN[k][0]:'Locked'}</b><br><small>${S.f[k]?'drop '+BN[k][1]:'&nbsp;'}</small></div>`).join('');
  drawGrid();drawBelt();drawAuto();
  $('crates').innerHTML=S.cr.length?'':'<small>Craft a Crate Dock to unlock.</small>';
  S.cr.forEach((c,i)=>{const e=document.createElement('div');e.className='crate'+(c.item?'':' e');e.dataset.i=i;
   e.innerHTML=c.item?`${I[c.item][0]}<br><b id="cn${i}">${c.n}</b>${c.bot?'<br><small>Bot v'+c.bot+'</small>':''}`:'Empty<br><small>drop an item</small>';
-  e.onclick=()=>{if(c.n>0){const s=spot(c.item);if(s){put(c.item,...s);c.n--;if(!c.n&&!c.bot)c.item=null;snd(400,.05);ui()}else log('Grid is full.')}};
+  e.onpointerdown=ev=>{lastMoved=false;if(c.n>0&&c.item&&!ev.target.closest('button'))startDrag(ev,{src:'c',c,t:c.item,e})};
+  e.onclick=()=>{if(lastMoved){lastMoved=false;return}if(c.n>0){const s=spot(c.item);if(s){put(c.item,...s);c.n--;if(!c.n&&!c.bot)c.item=null;snd(400,.05);ui()}else log('Grid is full.')}};
   [1,2].forEach(t=>{if(S.bots[t]>0&&c.item&&EL[t].includes(c.item)&&c.bot<t&&!(t==1&&c.bot)){const b=document.createElement('button');b.textContent='+ Bot v'+t;b.onclick=ev=>{ev.stopPropagation();S.bots[t]--;if(c.bot)S.bots[c.bot]++;c.bot=t;ui()};e.append(b)}});
   $('crates').append(e)});
+ const rdy=new Set(matches().map(m=>m.r[0]));
  $('bps').innerHTML='';R.forEach(r=>{if(!vis(r))return;const cnt={};r[2].forEach(p=>cnt[p[0]]=(cnt[p[0]]||0)+1);
-  const e=document.createElement('div');e.className='bp'+(sel==r[0]?' s':'');
-  e.innerHTML=`<b>${S.nb[r[0]]?'<span style="color:var(--c)">NEW </span>':''}${r[1]}</b><br><small>${Object.entries(cnt).map(([t,n])=>`<span style="color:${I[t][3]};font-weight:700">${n}x ${I[t][0]}</span>`).join(', ')}</small><br><small>${r[3]}</small>`;
-  e.onclick=()=>{delete S.nb[r[0]];sel=sel==r[0]?null:r[0];drawGrid();ui()};$('bps').append(e)});
+  const e=document.createElement('div');e.className='bp tp'+(sel==r[0]?' s':'')+(rdy.has(r[0])?' rdy':'');e._tip=r[3];
+  e.innerHTML=`<span class="nm">${r[1]}${S.nb[r[0]]?'<span class="tag nw">NEW</span>':''}${rdy.has(r[0])?'<span class="tag rd">READY</span>':''}</span><div class="igs">${Object.entries(cnt).map(([t,n])=>`<span class="ig"><span class="ic">${art(t)}</span><span style="color:${I[t][3]}">${n}x ${I[t][0]}</span></span>`).join('')}</div>`;
+  e.onmouseenter=()=>{if(S.nb[r[0]]){delete S.nb[r[0]];const n=e.querySelector('.nw');n&&n.remove()}};
+  e.onclick=()=>{sel=sel==r[0]?null:r[0];drawGrid();ui()};$('bps').append(e)});
  save()}
 // ---------- pile
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
@@ -284,8 +299,9 @@ const rmTrash=e=>{e.classList.add('pop');setTimeout(()=>e.remove(),160);snd(300,
 function mvc(){$('tc').style.transform=`translate(${px-7}px,${py-7}px)`}
 function equip(k,ev){eq=k;px=lx=ev.clientX;py=ly=ev.clientY;document.body.classList.add('eq');const c=$('tc');c.className=k=='jack'?'jk':'';c.innerHTML=(k=='torch'?'<i class="flame"></i>':'')+TI[k];c.style.display='block';mvc();lt=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);hover(px,py);snd(220,.06,'triangle',.05)}
 function unequip(){if(!eq)return;eq=null;cancelAnimationFrame(raf);document.body.classList.remove('eq');$('tc').style.display='none';$('tip').style.display='none';document.querySelectorAll('.slot.held').forEach(s=>s.classList.remove('held'))}
-function hover(x,y){const t=$('tip'),el=document.elementFromPoint(x,y),b=el&&el.closest&&el.closest('.ob');
- if(b&&b._o&&eq!==b._o.tool){t.textContent='Requires '+TL[b._o.tool].n+' to open';t.style.display='block';t.style.left=x+14+'px';t.style.top=y+(eq?34:16)+'px'}else t.style.display='none'}
+function hover(x,y){const t=$('tip'),el=document.elementFromPoint(x,y),b=el&&el.closest&&el.closest('.ob'),p=!b&&el&&el.closest&&el.closest('.tp');let h=null;
+ if(b&&b._o&&eq!==b._o.tool)h='Requires '+TL[b._o.tool].n+' to open';else if(p&&!eq&&!drag)h=p._tip;
+ if(h){if(t._h!==h){t.innerHTML=h;t._h=h}t.style.display='block';const w=t.offsetWidth,hh=t.offsetHeight;let tx=x+14,ty=y+(eq?34:16);if(tx+w>innerWidth-6)tx=x-w-14;if(ty+hh>innerHeight-4)ty=y-hh-10;t.style.left=Math.max(4,tx)+'px';t.style.top=Math.max(4,ty)+'px'}else t.style.display='none'}
 function loop(t){if(!eq)return;const dt=Math.min(.05,(t-lt)/1000);lt=t;work(dt,t);raf=requestAnimationFrame(loop)}
 function work(dt,now){const mv=Math.hypot(px-lx,py-ly);lx=px;ly=py;
  const el=document.elementFromPoint(px,py),b=el&&el.closest&&el.closest('.ob'),o=b&&b._o;
@@ -301,24 +317,26 @@ function finish(o){o.done=1;const b=o.e,r=b.getBoundingClientRect(),cx=r.left+r.
  else{burst(cx,cy,['#9aa0a8','#6b7280','#d1d5db'],26,110,.8,6);nz(.4,.14,300);b.style.transition='opacity .25s';b.style.opacity=0;
   for(let i=0;i<7;i++){const s=rr(18,30),g=document.createElement('div');g.className='tr';g.style.cssText=`width:${s}px;height:${s*rr(.7,1)}px;left:${b.offsetLeft+rr(0,Math.max(1,b.offsetWidth-s))}px;top:${b.offsetTop+rr(0,Math.max(1,b.offsetHeight-s))}px;background:${rnd(['#8b9099','#6b7078','#a0a5ad','#7a7f88'])};clip-path:${rnd(['polygon(10% 0,90% 10%,100% 70%,60% 100%,0 80%)','polygon(0 20%,40% 0,100% 30%,85% 100%,15% 90%)'])}`;g.onpointerdown=ev=>startDrag(ev,{src:'t',e:g});P.append(g)}
   log('The concrete shatters into gravel. Swipe it away.')}
- o.item.ob=null;OBS=OBS.filter(x=>x!==o);setTimeout(()=>b.remove(),o.tool=='torch'?520:300)}
+ o.item.ob=null;o.item.e.style.zIndex=8;o.item.e.classList.add('rev');OBS=OBS.filter(x=>x!==o);setTimeout(()=>b.remove(),o.tool=='torch'?520:300)}
 // ---------- drag & drop
-function startDrag(ev,d){ev.preventDefault();drag=d;const r=d.e.getBoundingClientRect();d.ox=ev.clientX-r.left;d.oy=ev.clientY-r.top;
+function startDrag(ev,d){ev.preventDefault();drag=d;d.sx=ev.clientX;d.sy=ev.clientY;d.mv=false;lastMoved=false;const r=d.e.getBoundingClientRect();d.ox=ev.clientX-r.left;d.oy=ev.clientY-r.top;
  if(d.src=='t'){if(S.f.blower){drag=null;rmTrash(d.e);return}d.e.style.zIndex=9;return}
- if(d.src=='k')d.ox=d.oy=CS/2;
+ if(d.src=='k'||d.src=='c')d.ox=d.oy=CS/2;
  d.gh=mk(d.t,CS);Object.assign(d.gh.style,{position:'fixed',pointerEvents:'none',zIndex:99,left:ev.clientX-d.ox+'px',top:ev.clientY-d.oy+'px'});document.body.append(d.gh);d.e.style.opacity=.3;document.querySelectorAll('.crate').forEach(e=>{if(S.cr[+e.dataset.i].item==d.t)e.classList.add('glow')})}
-addEventListener('pointermove',ev=>{px=ev.clientX;py=ev.clientY;if(eq)mvc();hover(px,py);if(!drag)return;const d=drag;
+addEventListener('pointermove',ev=>{px=ev.clientX;py=ev.clientY;if(eq)mvc();hover(px,py);if(!drag)return;const d=drag;if(!d.mv&&Math.hypot(ev.clientX-d.sx,ev.clientY-d.sy)>5)d.mv=true;
  if(d.src=='t'){const pr=$('pile').getBoundingClientRect();d.e.style.left=ev.clientX-pr.left-d.ox+'px';d.e.style.top=ev.clientY-pr.top-d.oy+'px'}
  else{d.gh.style.left=ev.clientX-d.ox+'px';d.gh.style.top=ev.clientY-d.oy+'px'}});
-const take=d=>{if(d.src=='p'){d.e.remove();d.ring&&d.ring.remove()}else if(d.src=='k')S.pk=S.pk.filter(o=>o!==d.o);else S.g=S.g.filter(o=>o!==d.o)};
-function endDrag(ev){if(!drag)return;const d=drag;drag=null;
+const take=d=>{if(d.src=='p'){d.e.remove();d.ring&&d.ring.remove()}else if(d.src=='k')S.pk=S.pk.filter(o=>o!==d.o);else if(d.src=='c'){d.c.n--;if(!d.c.n&&!d.c.bot)d.c.item=null}else S.g=S.g.filter(o=>o!==d.o)};
+function endDrag(ev){if(!drag)return;const d=drag;drag=null;lastMoved=!!d.mv;
  if(d.src=='t'){const r=$('pile').getBoundingClientRect();if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom)rmTrash(d.e);else d.e.style.zIndex='';return}
  d.gh.remove();d.e.style.opacity='';document.querySelectorAll('.glow').forEach(e=>e.classList.remove('glow'));
  const tg=document.elementFromPoint(ev.clientX,ev.clientY),b=tg&&tg.closest('.bench'),c=tg&&tg.closest('.crate');
  if(b)return bench(b.dataset.b,d);
- if(c)return crateIn(S.cr[+c.dataset.i],d);
+ if(c){const tc=S.cr[+c.dataset.i];if(d.src=='c'&&tc===d.c)return;return crateIn(tc,d)}
  const pr=$('pile').getBoundingClientRect();
- if(d.src=='g'&&ev.clientX>=pr.left&&ev.clientX<=pr.right&&ev.clientY>=pr.top&&ev.clientY<=pr.bottom){take(d);const[,w,h]=I[d.t];pileItem(d.t,clamp(ev.clientX-d.ox-pr.left,0,pr.width-w*CS),clamp(ev.clientY-d.oy-pr.top,0,pr.height-h*CS),4);snd(140,.1,'triangle');ui();return}
+ const onP=ev.clientX>=pr.left&&ev.clientX<=pr.right&&ev.clientY>=pr.top&&ev.clientY<=pr.bottom;
+ if(d.src=='k'&&onP){take(d);snd(140,.1,'triangle');nz(.12,.05,600);log('Discarded '+I[d.t][0]+'.');ui();return}
+ if(d.src=='g'&&onP){take(d);const[,w,h]=I[d.t];pileItem(d.t,clamp(ev.clientX-d.ox-pr.left,0,pr.width-w*CS),clamp(ev.clientY-d.oy-pr.top,0,pr.height-h*CS),4);snd(140,.1,'triangle');ui();return}
  const gr=$('grid').getBoundingClientRect();
  if(ev.clientX<gr.left||ev.clientX>gr.right||ev.clientY<gr.top||ev.clientY>gr.bottom)return;
  const x=Math.round((ev.clientX-d.ox-gr.left)/CS),y=Math.round((ev.clientY-d.oy-gr.top)/CS);
@@ -328,7 +346,7 @@ function bench(b,d){if(!S.f[b]||d.t!=BI[b]){log('That bench cannot take '+I[d.t]
  take(d);snd(200,.12,'sawtooth',.07);
  if(b=='vice')give('bar');else if(b=='unseize')give('motor');
  else if(b=='cleaner'){scrub++;setTimeout(()=>{scrub--;give('chip')},1000)}
- else{S.sp++;if(S.sp>=3){S.sp=0;give('coil')}}
+ else give('coil');
  ui()}
 function crateIn(c,d){if(!c)return;if(c.item&&c.item!=d.t){log('That crate holds '+I[c.item][0]+'.');return}
  c.item=d.t;c.n++;take(d);snd(260,.08);ui()}
@@ -338,6 +356,7 @@ function sweep(){const P=$('pile'),t=rnd(DROPS[S.cur]);S.pk.push({id:S.n++,t});s
  if(tr.length)rmTrash(rnd(tr));
  else if(!drag&&!eq&&!PI.some(d=>d.e.isConnected&&(!d.ob||S.done[TL[d.ob.tool].rid])))spawn();
  snd(260,.05,'triangle',.03);if(!drag)drawAuto();save()}
+$('takeall').onclick=()=>{[...S.pk].forEach(o=>pkTake(o))};
 $('auto').onclick=()=>{S.auto=!S.auto;aacc=0;drawAuto();save()};
 setInterval(()=>{const f=S.pk.length>=pcap(),n=aint();
  if(S.auto&&!f){aacc+=.1;if(aacc>=n){aacc=0;sweep()}}
@@ -347,6 +366,10 @@ $('next').onclick=spawn;
 $('rs').onclick=()=>{if(confirm('Erase all progress?')){try{localStorage.removeItem('junk1')}catch(e){}location.reload()}};
 setInterval(()=>{S.cr.forEach((c,i)=>{if(c.bot&&c.item){c.acc+=.5;if(c.acc>=(c.bot==1?5:3)){c.acc=0;c.n++;const e=$('cn'+i);if(e)e.textContent=c.n}}})},500);
 setInterval(save,5000);
+(function(){const dt=S.ts?Math.min((Date.now()-S.ts)/1000,28800):0;if(dt<60)return;let got=0,pk=0;
+ S.cr.forEach(c=>{if(c.bot&&c.item){const n=Math.floor(dt/(c.bot==1?5:3));c.n+=n;got+=n}});
+ if(S.auto){const n=Math.min(Math.floor(dt/aint()),pcap()-S.pk.length);for(let i=0;i<n;i++){S.pk.push({id:S.n++,t:rnd(DROPS[S.cur])});pk++}}
+ if(got||pk)setTimeout(()=>log('<b style="color:var(--g)">Welcome back! Away '+Math.round(dt/60)+' min: bots made '+got+' items'+(S.auto?', auto-search found '+pk:'')+'.</b>'),0)})();
 log('Dig through piles, clear the trash, collect scrap. Click a blueprint to see its layout.');
 ui();setTimeout(spawn,50);
 </script></body></html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Junkyard Scrapper</title>
+<style>
+:root{--bg:#0d0e11;--p:#15171c;--l:#2a2d35;--t:#d6d6da;--m:#8b8f99;--a:#D97706;--g:#facc15;--c:#22d3ee;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--t);font:13px/1.4 "Chakra Petch",ui-monospace,Menlo,Consolas,monospace;height:100vh;display:grid;grid-template-columns:1fr 1.15fr .85fr;gap:8px;padding:8px;user-select:none;-webkit-user-select:none}
+.z{background:var(--p);border:1px solid var(--l);border-radius:4px;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:8px;min-height:0}
+h2{margin:0;font-size:14px;color:var(--a);font-weight:700}
+small,.m{color:var(--m)}
+button{background:#23262e;color:var(--t);border:1px solid #3b3f4a;border-radius:3px;padding:6px 10px;font:inherit;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--a)}button:disabled{opacity:.35;cursor:default}
+button.on{border-color:var(--a);color:var(--a)}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+#pile{position:relative;flex:1;min-height:320px;overflow:hidden;border:1px solid var(--l);border-radius:3px;background:repeating-linear-gradient(135deg,#121317 0 12px,#14161a 12px 24px)}
+.it{position:absolute;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,.2);border-radius:3px;touch-action:none;cursor:grab;overflow:hidden;padding:0}
+.tr{position:absolute;touch-action:none;cursor:grab;z-index:3;box-shadow:inset 0 0 0 2px rgba(0,0,0,.25)}
+.tr.pop{transition:transform .15s,opacity .15s;transform:scale(.3);opacity:0}
+.ring{position:absolute;z-index:7;pointer-events:none;border:2px solid var(--g);border-radius:4px;opacity:0;animation:pulse 3s infinite}
+@keyframes pulse{0%,80%{opacity:0}90%{opacity:1;box-shadow:0 0 12px var(--g)}100%{opacity:0}}
+#grid{position:relative;overflow:hidden;border:1px solid #3b3f4a;background-image:linear-gradient(var(--l) 1px,transparent 1px),linear-gradient(90deg,var(--l) 1px,transparent 1px);background-size:46px 46px;touch-action:none;margin:0 auto}
+.hl{border-color:var(--g);box-shadow:0 0 10px 2px var(--g);animation:gl 1s alternate infinite}
+@keyframes gl{to{box-shadow:0 0 14px 3px var(--c);border-color:var(--c)}}
+.ghost{position:absolute;border:2px dashed var(--c);opacity:.8;pointer-events:none;font-size:9px;color:var(--c);display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.05;font-weight:700}
+.asm{position:absolute;z-index:20;transform:translate(-50%,-50%);background:var(--g);color:#000;font-weight:700;border:0;white-space:nowrap;box-shadow:0 0 14px var(--g)}
+.bench{flex:1;min-width:104px;border:1px dashed #3b3f4a;border-radius:3px;padding:6px;text-align:center;font-size:12px}
+.bench.lock{opacity:.3}.bench.up{border:1px solid var(--a)}
+.bench.scrub{animation:sc .25s infinite alternate}@keyframes sc{to{background:#1c3a36}}
+.crate{width:96px;border:1px solid var(--a);border-radius:3px;padding:6px;text-align:center;cursor:pointer;font-size:12px}
+.crate.e{border-style:dashed;border-color:#3b3f4a}
+.crate button{padding:2px 6px;font-size:11px;margin-top:4px}
+.bp{position:relative;padding:9px 10px 9px 20px;cursor:pointer;background:linear-gradient(180deg,#1d2026,#16181d);border:1px solid #3b3f4a;border-radius:2px;box-shadow:0 2px 0 #0a0b0d,inset 0 0 0 1px #00000055;transition:border-color .12s,transform .12s}
+.bp::before{content:"";position:absolute;left:0;top:0;bottom:0;width:9px;background:repeating-linear-gradient(135deg,#facc15 0 5px,#111 5px 10px);opacity:.85}
+.bp::after{content:"";position:absolute;right:6px;top:6px;width:6px;height:6px;border-radius:50%;background:#4b5059;box-shadow:inset -1px -1px 0 #0008}
+.bp:hover{border-color:var(--a);transform:translateX(2px)}
+.bp.s{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 2px 0 #0a0b0d}
+.bp.rdy::before{background:repeating-linear-gradient(135deg,#22d3ee 0 5px,#111 5px 10px)}
+.bp .nm{display:block;color:var(--g);font-weight:700;font-size:14px;letter-spacing:.04em;text-shadow:0 1px 0 #000}
+.tag{font-size:10px;font-weight:700;padding:0 5px;margin-left:6px;border-radius:2px;color:#000;background:var(--c);vertical-align:middle}
+.tag.rd{background:var(--g)}
+.igs{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:7px}
+.ig{display:inline-flex;align-items:center;gap:4px;font-weight:700;font-size:12px}
+.ic{width:16px;height:16px;display:inline-block}
+#log{height:140px;overflow:auto;font-size:12px;color:var(--m);border-top:1px solid var(--l);padding-top:6px}
+#win{position:fixed;inset:0;background:#000d;display:none;align-items:center;justify-content:center;z-index:99;text-align:center;padding:20px}
+#win div{max-width:440px;border:2px solid var(--g);background:var(--p);padding:28px;border-radius:4px}
+.crate.glow{animation:cg 1s infinite alternate}@keyframes cg{to{box-shadow:0 0 12px 2px var(--c);border-color:var(--c)}}
+/* auto search + pockets */
+#apw{flex:1;min-width:60px;height:8px;background:#23262e;border-radius:4px;overflow:hidden}
+#apb{height:100%;width:0;background:var(--c)}
+.pk{width:52px;height:52px;border:1px dashed #3b3f4a;border-radius:3px;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none;background:#1a1c21}
+.pk.f{border-style:solid;border-color:var(--a)}
+.pk .it{position:static}
+/* toolbelt */
+#belt{display:flex;gap:6px;align-items:stretch;flex-wrap:wrap;border:1px solid var(--l);border-radius:3px;padding:6px;background:#111317}
+#belt .bl{align-self:center;color:var(--a);margin-right:4px}
+.slot{width:104px;border:1px solid #3b3f4a;border-radius:3px;padding:4px;text-align:center;cursor:grab;background:#1a1c21;touch-action:none}
+.slot svg{width:34px;height:34px;display:block;margin:0 auto;pointer-events:none}
+.slot small{display:block;font-size:10px;pointer-events:none}
+.slot.lock{opacity:.4;cursor:not-allowed}.slot.lock svg{filter:grayscale(1) brightness(.6)}
+.slot.held{border-style:dashed;opacity:.45}
+.slot:not(.lock):hover{border-color:var(--a)}
+body.eq,body.eq *{cursor:none!important}
+#tc{position:fixed;left:0;top:0;width:56px;height:56px;pointer-events:none;z-index:999;display:none}
+#tc svg{width:100%;height:100%;overflow:visible;display:block}
+#tc.jk svg{animation:vib .05s infinite}
+@keyframes vib{25%{transform:translate(1.5px,-1px)}75%{transform:translate(-1.5px,1px)}}
+.flame{position:absolute;left:-10px;top:-10px;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,#fff 0 14%,#fde047 28%,#f97316 58%,transparent 72%);animation:fl .1s alternate infinite}
+@keyframes fl{from{transform:scale(.8)}to{transform:scale(1.2) translate(-2px,-2px)}}
+/* obstacles */
+.ob{position:absolute;z-index:6;cursor:not-allowed}
+.ob svg{width:100%;height:100%;display:block;pointer-events:none;overflow:visible}
+.pb{position:absolute;left:10%;right:10%;bottom:4px;height:5px;background:#000a;border-radius:3px;display:none;pointer-events:none}
+.pb b{display:block;height:100%;width:0;background:var(--g);border-radius:3px}
+#tip{position:fixed;z-index:1000;pointer-events:none;background:#000e;border:1px solid var(--a);color:var(--g);padding:4px 8px;border-radius:3px;display:none;font-size:12px;max-width:280px}
+.pt{position:fixed;z-index:998;pointer-events:none;animation:fly var(--l,.6s) ease-out forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+/* unstable pile */
+.unst{position:absolute;left:8px;top:8px;z-index:20;background:#7f1d1d;color:#fecaca;border:1px solid #ef4444;padding:3px 8px;font-weight:700;border-radius:3px;animation:bl .6s steps(2) infinite}
+@keyframes bl{50%{opacity:.25}}
+.ko{position:absolute;left:8px;top:38px;z-index:20;border-color:#ef4444;color:#fecaca;background:#3b1111}
+.quake{animation:qk .12s 6}
+@keyframes qk{25%{transform:translate(3px,-2px)}75%{transform:translate(-3px,2px)}}
+.it.rev{animation:rev .35s ease-out}@keyframes rev{from{transform:scale(1.5)}}
+button.lk{opacity:.35;cursor:not-allowed}
+#bps{gap:14px}
+@media(max-width:900px){body{grid-template-columns:1fr;height:auto}.z{overflow:visible}#pile{min-height:380px}}
+</style></head><body>
+<section class="z"><h2>The junkyard</h2><div class="row" id="tabs"></div>
+<div class="row"><button id="auto">[ AUTO SEARCH ]</button><div id="apw"><div id="apb"></div></div><small id="astat"></small></div>
+<div class="row"><small>Auto-pockets</small><div class="row" id="pockets"></div><button id="takeall" title="Move every pocket item to the grid or crates">Take all</button></div>
+<div id="pile"></div>
+<div id="belt"></div>
+<div class="row"><button id="next" class="on">Next pile</button><small id="hint">Drag trash off the mound to find scrap. Hold a tool from the toolbelt over matching obstacles. Drag unwanted grid items back onto the pile to discard them, or drag pocket items onto it to destroy them.</small></div></section>
+<section class="z"><h2>Workshop</h2><div class="row" id="bench"></div><div id="gridwrap"><div id="grid"></div></div>
+<h2>Crates</h2><div class="row" id="crates"><small>Craft a Crate Dock to unlock.</small></div></section>
+<section class="z"><h2>Blueprints</h2><div id="bps" class="row" style="flex-direction:column;flex:1;flex-wrap:nowrap;overflow:auto;align-items:stretch"></div>
+<div class="row" style="justify-content:flex-end"><button id="rs">Reset</button></div><div id="log"></div></section>
+<div id="win"><div><h2>Phase 1 complete</h2><p>The Radio Transceiver Array hums to life. Someone, somewhere, answers.</p><p class="m">Phase 2: the Outpost (coming soon).</p><button onclick="this.closest('#win').style.display='none'">Keep playing</button></div></div>
+<div id="tc"></div><div id="tip"></div>
+<script>
+const CS=46,$=id=>document.getElementById(id),rnd=a=>a[Math.random()*a.length|0],rr=(a,b)=>a+Math.random()*(b-a);
+// id:[name,w,h,color]  (color is used for the item, its art and its name in blueprints)
+const I={scrap:['Flat Scrap',1,1,'#94A3B8'],wire:['Tangled Wire',1,1,'#D97706'],plastic:['Plastic Shard',1,1,'#A855F7'],bent:['Bent Steel Bar',1,1,'#7c828d'],
+dchip:['Dirty Chip',1,1,'#4f9d7f'],glass:['Glass Shard',1,1,'#67E8F9'],cell:['Chemical Cell',1,2,'#A3E635'],smotor:['Seized Motor',2,1,'#b45309'],gear:['Heavy Gear',2,2,'#cbd5e1'],
+core:['High-Density Core',2,2,'#f43f5e'],gold:['Gold Traces',1,1,'#FACC15'],bar:['Steel Bar',1,3,'#d1d5db'],chip:['Microchip',1,1,'#10B981'],coil:['Copper Coil',2,2,'#D97706'],
+motor:['Motor',2,1,'#f59e0b'],pipe:['Pipe',1,2,'#a8a29e'],bowl:['Bowl Frame',2,2,'#b6bcc6'],antenna:['Long Antenna',1,3,'#e5e7eb']};
+// ---------- item art (SVG, 100 units per grid cell)
+const gearPts=(cx,cy,r1,r2,n)=>{const p=[];for(let i=0;i<n*4;i++){const a=i/(n*4)*6.2832,k=(i%4==1||i%4==2)?r2:r1;p.push((cx+Math.cos(a)*k).toFixed(1)+','+(cy+Math.sin(a)*k).toFixed(1))}return p.join(' ')};
+const motorArt=(c,dark,rust)=>`<rect x="10" y="22" width="130" height="56" rx="10" fill="${c}" stroke="${dark}" stroke-width="5"/><path d="M40 22v56M70 22v56M100 22v56" stroke="${dark}" stroke-width="4"/><rect x="140" y="42" width="48" height="16" fill="${rust?'#78716c':'#e5e7eb'}" stroke="#292524" stroke-width="4"/>`+(rust?`<circle cx="30" cy="40" r="7" fill="#ea580c" opacity=".8"/><circle cx="116" cy="62" r="9" fill="#ea580c" opacity=".7"/><circle cx="84" cy="34" r="5" fill="#d97706" opacity=".7"/>`:`<rect x="18" y="30" width="88" height="8" rx="4" fill="#fff" opacity=".35"/><circle cx="28" cy="64" r="5" fill="#374151"/>`);
+const ART={
+scrap:c=>`<polygon points="10,26 78,10 92,66 44,90 8,68" fill="${c}" stroke="#475569" stroke-width="5" stroke-linejoin="round"/><path d="M16 30L76 16" stroke="#fff" stroke-opacity=".45" stroke-width="5" stroke-linecap="round"/><circle cx="28" cy="52" r="6" fill="#334155"/><circle cx="68" cy="58" r="6" fill="#334155"/>`,
+wire:c=>`<path d="M10 62C26 6 78 6 84 44S28 98 22 52 78 14 90 72" fill="none" stroke="#7c2d12" stroke-width="12" stroke-linecap="round"/><path d="M10 62C26 6 78 6 84 44S28 98 22 52 78 14 90 72" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round"/><path d="M14 30C40 60 80 80 60 22S22 40 50 86" fill="none" stroke="#fbbf24" stroke-width="4" stroke-linecap="round"/><circle cx="10" cy="62" r="5" fill="#fcd34d"/><circle cx="90" cy="72" r="5" fill="#fcd34d"/>`,
+plastic:c=>`<polygon points="18,14 88,30 62,92" fill="${c}" stroke="#581c87" stroke-width="5" stroke-linejoin="round"/><polygon points="18,14 52,40 26,72" fill="#d8b4fe" fill-opacity=".75"/><polygon points="88,30 52,40 62,92" fill="#7e22ce" fill-opacity=".6"/>`,
+bent:c=>`<path d="M12 80L45 70L55 30L88 20" fill="none" stroke="#3f434b" stroke-width="20" stroke-linejoin="round" stroke-linecap="round"/><path d="M12 80L45 70L55 30L88 20" fill="none" stroke="${c}" stroke-width="14" stroke-linejoin="round" stroke-linecap="round"/><path d="M14 76L46 66L56 26L86 17" fill="none" stroke="#c4c9d2" stroke-width="3" stroke-linejoin="round" opacity=".7"/>`,
+dchip:c=>`<path d="M4 30h10M4 50h10M4 70h10M86 30h10M86 50h10M86 70h10" stroke="#a8a29e" stroke-width="6"/><rect x="14" y="14" width="72" height="72" rx="6" fill="${c}" stroke="#14532d" stroke-width="5"/><rect x="34" y="34" width="32" height="32" fill="#1f2937"/><circle cx="26" cy="72" r="12" fill="#78350f" opacity=".7"/><circle cx="70" cy="26" r="9" fill="#57534e" opacity=".7"/><circle cx="76" cy="70" r="7" fill="#78350f" opacity=".6"/>`,
+glass:c=>`<polygon points="14,70 40,10 90,40 70,92" fill="${c}" fill-opacity=".55" stroke="#ecfeff" stroke-width="5" stroke-linejoin="round"/><polyline points="40,10 50,52 14,70" fill="none" stroke="#fff" stroke-width="3" opacity=".7"/><path d="M62 30L78 48" stroke="#fff" stroke-width="5" opacity=".8" stroke-linecap="round"/>`,
+cell:c=>`<rect x="38" y="8" width="24" height="20" rx="3" fill="#d1d5db"/><rect x="20" y="26" width="60" height="168" rx="12" fill="${c}" stroke="#3f6212" stroke-width="5"/><rect x="20" y="70" width="60" height="22" fill="#1a2e05" opacity=".5"/><polygon points="56,100 34,142 50,142 44,184 70,134 54,134" fill="#1a2e05"/><rect x="28" y="40" width="8" height="120" rx="4" fill="#fff" opacity=".35"/>`,
+smotor:c=>motorArt(c,'#451a03',1),
+gear:c=>`<polygon points="${gearPts(100,100,92,74,10)}" fill="${c}" stroke="#475569" stroke-width="6" stroke-linejoin="round"/><circle cx="100" cy="100" r="52" fill="none" stroke="#64748b" stroke-width="6"/><path d="M100 78V48M100 122v30M78 100H48M122 100h30" stroke="#64748b" stroke-width="8"/><circle cx="100" cy="100" r="22" fill="#334155" stroke="#94a3b8" stroke-width="5"/>`,
+core:c=>`<defs><radialGradient id="cg"><stop offset="0" stop-color="#fff1f2"/><stop offset=".5" stop-color="${c}"/><stop offset="1" stop-color="#881337"/></radialGradient></defs><polygon points="100,10 178,55 178,145 100,190 22,145 22,55" fill="#1f2937" stroke="#9f1239" stroke-width="7" stroke-linejoin="round"/><circle cx="100" cy="100" r="54" fill="url(#cg)" stroke="#fda4af" stroke-width="4"/><path d="M100 30v22M100 148v22M40 65l19 11M141 124l19 11M40 135l19-11M141 76l19-11" stroke="${c}" stroke-width="7" stroke-linecap="round"/>`,
+gold:c=>`<rect x="8" y="8" width="84" height="84" rx="6" fill="#1c1917" stroke="#78716c" stroke-width="4"/><path d="M20 30H50V56H80M20 72H40M60 82V66M50 18V30" fill="none" stroke="${c}" stroke-width="6" stroke-linejoin="round"/><circle cx="20" cy="30" r="7" fill="${c}"/><circle cx="80" cy="56" r="7" fill="${c}"/><circle cx="40" cy="72" r="6" fill="${c}"/>`,
+bar:c=>`<rect x="30" y="8" width="40" height="284" rx="5" fill="${c}" stroke="#6b7280" stroke-width="5"/><rect x="38" y="14" width="9" height="272" fill="#fff" opacity=".5"/><circle cx="55" cy="40" r="6" fill="#6b7280"/><circle cx="55" cy="150" r="6" fill="#6b7280"/><circle cx="55" cy="260" r="6" fill="#6b7280"/>`,
+chip:c=>`<path d="M26 4v14M42 4v14M58 4v14M74 4v14M26 82v14M42 82v14M58 82v14M74 82v14M4 26h14M4 42h14M4 58h14M4 74h14M82 26h14M82 42h14M82 58h14M82 74h14" stroke="#e5e7eb" stroke-width="6"/><rect x="18" y="18" width="64" height="64" rx="6" fill="${c}" stroke="#065f46" stroke-width="5"/><rect x="32" y="32" width="36" height="36" rx="3" fill="#064e3b"/><circle cx="26" cy="26" r="3" fill="#fff"/>`,
+coil:c=>{let w='';for(let i=0;i<7;i++)w+=`<path d="M38 ${52+i*17}Q100 ${66+i*17} 162 ${52+i*17}" fill="none" stroke="#7c2d12" stroke-width="14" stroke-linecap="round"/><path d="M38 ${52+i*17}Q100 ${66+i*17} 162 ${52+i*17}" fill="none" stroke="${c}" stroke-width="10" stroke-linecap="round"/>`;return `<rect x="26" y="26" width="148" height="16" rx="6" fill="#374151"/><rect x="26" y="166" width="148" height="16" rx="6" fill="#374151"/>`+w+`<path d="M162 150C192 140 192 100 176 88" fill="none" stroke="${c}" stroke-width="7" stroke-linecap="round"/>`},
+motor:c=>motorArt(c,'#78350f',0),
+pipe:c=>`<rect x="30" y="14" width="40" height="172" fill="${c}" stroke="#44403c" stroke-width="5"/><rect x="22" y="8" width="56" height="20" rx="3" fill="#78716c" stroke="#44403c" stroke-width="4"/><rect x="22" y="172" width="56" height="20" rx="3" fill="#78716c" stroke="#44403c" stroke-width="4"/><rect x="38" y="30" width="8" height="140" fill="#fff" opacity=".4"/>`,
+bowl:c=>`<path d="M16 84Q100 200 184 84Z" fill="${c}" stroke="#475569" stroke-width="6" stroke-linejoin="round"/><ellipse cx="100" cy="84" rx="86" ry="18" fill="#64748b" stroke="#475569" stroke-width="6"/><ellipse cx="100" cy="84" rx="68" ry="11" fill="#1f2937"/><path d="M40 160L28 192M160 160L172 192" stroke="#6b7280" stroke-width="9" stroke-linecap="round"/>`,
+antenna:c=>`<path d="M50 40V270" stroke="${c}" stroke-width="8"/><path d="M20 80H80M26 120H74M32 160H68" stroke="${c}" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="26" r="12" fill="#FACC15" stroke="#a16207" stroke-width="4"/><path d="M30 292L50 250L70 292Z" fill="#6b7280"/>`};
+const art=t=>{const[,w,h,c]=I[t];return `<svg viewBox="0 0 ${w*100} ${h*100}" style="width:100%;height:100%;display:block;pointer-events:none">${ART[t](c)}</svg>`};
+const DROPS=[0,['scrap','scrap','wire','plastic','bent'],['dchip','bent','glass','cell','scrap'],['smotor','gear','cell','bent','dchip'],['core','gold','bent','gear']];
+const DN=['','Surface Trash','Sealed Container','Engine Pit','Relic Vault'],NEED=['','','Prying Crowbar','Thermal Blowtorch','Pneumatic Jackhammer'];
+// ---------- tools & obstacles
+const TL={crowbar:{n:'Prying Crowbar',rid:'lever',ob:'crate'},torch:{n:'Thermal Blowtorch',rid:'torch',ob:'plate'},jack:{n:'Pneumatic Jackhammer',rid:'jack',ob:'rock'}};
+const OB={crate:{tool:'crowbar',w:82,h:68},plate:{tool:'torch',w:96,h:76},rock:{tool:'jack',w:108,h:88}},OBT=['crate','plate','rock'];
+const TI={
+crowbar:`<svg viewBox="0 0 64 64"><path d="M10 10C6 20 14 24 20 28L54 58" fill="none" stroke="#111827" stroke-width="10" stroke-linecap="round"/><path d="M10 10C6 20 14 24 20 28L54 58" fill="none" stroke="#e2e8f0" stroke-width="6" stroke-linecap="round"/><path d="M10 10l6 2" stroke="#f87171" stroke-width="6" stroke-linecap="round"/></svg>`,
+torch:`<svg viewBox="0 0 64 64"><polygon points="7,7 24,13 13,24" fill="#94a3b8" stroke="#1f2937" stroke-width="2"/><path d="M18 18L42 42" stroke="#1f2937" stroke-width="16" stroke-linecap="round"/><path d="M18 18L42 42" stroke="#dc2626" stroke-width="11" stroke-linecap="round"/><path d="M40 40L56 56" stroke="#111827" stroke-width="9" stroke-linecap="round"/><circle cx="30" cy="30" r="4" fill="#fbbf24"/></svg>`,
+jack:`<svg viewBox="0 0 64 64"><path d="M8 8L24 24" stroke="#cbd5e1" stroke-width="6" stroke-linecap="round"/><path d="M26 26L46 46" stroke="#1f2937" stroke-width="20" stroke-linecap="round"/><path d="M26 26L46 46" stroke="#facc15" stroke-width="14" stroke-linecap="round"/><path d="M40 60L60 40" stroke="#111827" stroke-width="7" stroke-linecap="round"/></svg>`};
+const OA={
+crate:(w,h)=>{let p='';for(let i=0;i<4;i++)p+=`<rect x="3" y="${3+i*(h-6)/4}" width="${w-6}" height="${(h-6)/4}" fill="${i%2?'#9a6232':'#b07a40'}" stroke="#3b2208" stroke-width="2.5"/>`;return p+`<path d="M8 ${h-8}L${w-8} 8" stroke="#5c3a17" stroke-width="8"/><rect x="3" y="3" width="11" height="${h-6}" fill="#6b4421" stroke="#3b2208" stroke-width="2.5"/><rect x="${w-14}" y="3" width="11" height="${h-6}" fill="#6b4421" stroke="#3b2208" stroke-width="2.5"/>`+[[8,8],[8,h-8],[w-8,8],[w-8,h-8]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="2.5" fill="#d1d5db"/>`).join('')},
+plate:(w,h)=>`<polygon points="4,10 ${w-12},3 ${w-3},${h-10} 14,${h-3}" fill="#3b2f2a" stroke="#14100d" stroke-width="3"/><polygon points="4,10 ${w*.5},6 ${w*.4},${h*.5} 10,${h*.45}" fill="#5a3a28" opacity=".55"/><path d="M${w*.3} ${h*.2}l${w*.1} ${h*.5}M${w*.6} ${h*.15}l-${w*.05} ${h*.6}" stroke="#7c3a1d" stroke-width="5" opacity=".6"/>`+[[14,16],[w-14,14],[w-12,h-14],[22,h-12]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="3.5" fill="#6b4a3a"/>`).join(''),
+rock:(w,h)=>`<polygon points="${w*.1},${h*.7} ${w*.05},${h*.35} ${w*.3},${h*.08} ${w*.65},${h*.05} ${w*.92},${h*.3} ${w*.96},${h*.72} ${w*.7},${h*.95} ${w*.3},${h*.94}" fill="#7b8088" stroke="#2f3238" stroke-width="3" stroke-linejoin="round"/><polygon points="${w*.3},${h*.08} ${w*.65},${h*.05} ${w*.55},${h*.35} ${w*.25},${h*.3}" fill="#9aa0a8" opacity=".55"/><path d="M${w*.3} ${h*.1}L${w*.42} ${h*.4}L${w*.34} ${h*.62}L${w*.5} ${h*.9}M${w*.42} ${h*.4}L${w*.7} ${h*.5}" fill="none" stroke="#2f3238" stroke-width="3"/>`};
+// [id,name,pattern[type,x,y],effect text,out item (repeatable)]
+const R=[
+['vice','Vice Clamp',[['plastic',0,0],['scrap',0,1],['scrap',1,1]],'Unlocks the Vice Clamp (bent bar to steel bar)'],
+['bowl','Bowl Frame',[['scrap',0,0],['scrap',0,1],['scrap',1,1]],'Makes a Bowl Frame','bowl'],
+['lever','Prying Crowbar',[['bar',0,0],['scrap',0,3]],'Unlocks Depth 2: Sealed Container'],
+['pock1','Pocket Expansion v1',[['bowl',0,0],['plastic',2,0],['scrap',2,1]],''],
+['cleaner','Cleaning Station',[['cell',0,0],['glass',1,0],['dchip',2,0],['bowl',1,1]],'Unlocks the Cleaning Station (dirty chip to chip)'],
+['lens','Sifting Lens',[['scrap',0,0],['scrap',1,0],['glass',0,1]],'Hidden items pulse through the trash'],
+['ext1','Workbench Ext. 1',[['scrap',0,0],['scrap',1,0],['scrap',2,0],['bar',0,1],['bar',2,1]],'Grid grows to 4x6'],
+['dock2','Basic Crate Dock',[['scrap',0,0],['scrap',1,0],['scrap',2,0],['bowl',0,1]],'Unlocks 2 crate docks'],
+['spool','Wire Spooler',[['wire',0,0],['wire',1,0],['wire',2,0],['bar',3,0]],'Unlocks the Wire Spooler (3 wires to a coil)'],
+['pipe','Pipe',[['scrap',0,0],['scrap',0,1],['scrap',0,2]],'Makes a Pipe','pipe'],
+['blower','Trash Blower',[['pipe',0,0],['chip',1,0]],'Click trash to remove it instantly'],
+['torch','Thermal Blowtorch',[['cell',0,0],['pipe',1,0],['chip',2,0]],'Unlocks Depth 3: Engine Pit'],
+['aspd1','Auto-Search Speed v1',[['wire',0,0],['wire',1,0],['chip',0,1],['bar',1,1]],''],
+['ext2','Workbench Ext. 2',[['bar',0,0],['bar',1,0],['bar',2,0],['bar',3,0]],'Grid grows to 6x6'],
+['bot1','Scavenger Bot v1',[['chip',1,0],['motor',0,1],['motor',2,1],['bowl',1,2]],'Fills a crate with scrap, wire or plastic every 5s'],
+['jack','Pneumatic Jackhammer',[['motor',0,0],['gear',0,1],['bar',2,0]],'Unlocks Depth 4: Relic Vault'],
+['pock2','Pocket Expansion v2',[['bowl',0,0],['bowl',2,0],['pipe',0,2],['chip',1,2]],''],
+['aspd2','Auto-Search Speed v2',[['chip',0,0],['chip',1,0],['coil',0,1],['motor',2,1]],''],
+['dock3','Advanced Crate Dock',[['bar',0,0],['bar',1,0],['scrap',0,3],['scrap',1,3],['scrap',2,3]],'Unlocks 3 more crate docks'],
+['bot2','Scavenger Bot v2',[['chip',0,0],['chip',1,0],['motor',0,1],['motor',0,2],['bar',2,0],['bar',3,0]],'Also fills bars, chips, glass every 3s'],
+['antenna','Long Antenna',[['bar',0,0],['gold',1,0]],'Makes a Long Antenna','antenna'],
+['radio','Radio Transceiver',[['coil',0,0],['chip',2,0],['antenna',3,0],['core',0,2]],'PHASE 1 FINALE']];
+const ST={vice:0,bowl:0,lever:0,pock1:0,ext1:0,dock2:0,cleaner:1,lens:1,spool:1,pipe:1,blower:1,torch:1,aspd1:1,ext2:2,bot1:2,jack:2,pock2:2,aspd2:2,dock3:3,bot2:3,antenna:3,radio:3};
+const PRE={aspd2:'aspd1',pock2:'pock1'};
+const DESC={vice:'A bolted clamp that straightens bent steel. Unlocks the Vice Clamp bench: bent bars become 1x3 Steel Bars.',
+bowl:'A scrap basin for scrubbing and storage. Makes a Bowl Frame, needed for the Cleaning Station, crate docks and Bot v1.',
+lever:'A sturdy steel crowbar. Hold it from the toolbelt and drag across Wooden Crates to pop them open. Unlocks Depth 2: Sealed Container.',
+pock1:'Roomier pockets for the auto-searcher. Auto-Pockets hold 4 items instead of 2.',
+ext1:'A wider bench with room to think. Grid grows from 4x4 to 4x6.',
+dock2:'Sturdy bins bolted under the bench. Unlocks 2 crates that each hold one item type without using grid space.',
+cleaner:'A basin with a scrub brush, filled with chemical cell fluid. Needs Depth 2 salvage: a Chemical Cell, Glass Shard and Dirty Chip. Unlocks the Cleaning Station bench: dirty chips become Microchips.',
+lens:'Salvaged glass that sees through trash. Hidden items pulse through the pile every 3 seconds.',
+spool:'A hand-cranked winder. Unlocks the Wire Spooler bench: one Tangled Wire becomes a Copper Coil.',
+pipe:'Rolled scrap tubing. Makes a Pipe for the Trash Blower and Blowtorch.',
+blower:'A compressed-air nozzle. Click trash to blast it away, no dragging needed.',
+torch:'Chemical fuel through a pipe, lit by a chip. Hold it over Iron Plates for 1.5s to melt them. Unlocks Depth 3: Engine Pit and the Motor Unseizer bench.',
+aspd1:'Better sweeping gear. Auto-Search sweeps every 20s instead of 30s.',
+ext2:'A full-size workshop table. Grid grows to 6x6.',
+bot1:'A scrap-crawling bot on a salvaged motor. Assign it to a crate to auto-fill scrap, wire or plastic every 5s.',
+jack:'A pneumatic ram built from a gear and a motor. Hold it over Concrete for 1.5s to shatter it. Unlocks Depth 4: Relic Vault.',
+pock2:'A full pocket rack. Auto-Pockets hold 8 items.',
+aspd2:'A motorized sweeper arm. Auto-Search sweeps every 12s.',
+dock3:'Reinforced racks. Unlocks 3 more crates.',
+bot2:'A faster, sturdier bot. Upgrades a crate to also auto-fill bars, chips and glass every 3s.',
+antenna:'A tall mast tipped with gold. Makes a Long Antenna for the Radio.',
+radio:'Your link to the surface. Finishes Phase 1 and opens the Outpost.'};
+R.forEach(r=>r[3]=DESC[r[0]]);
+const BN={vice:['Vice Clamp','bent bar'],cleaner:['Cleaning Station','dirty chip'],spool:['Wire Spooler','tangled wire'],unseize:['Motor Unseizer','seized motor']};
+const BI={vice:'bent',cleaner:'dchip',spool:'wire',unseize:'smotor'};
+const EL=[0,['scrap','wire','plastic'],['scrap','wire','plastic','bar','chip','glass']];
+const nop=()=>{};
+const FX={vice:S=>S.f.vice=1,cleaner:S=>S.f.cleaner=1,spool:S=>S.f.spool=1,lens:S=>S.f.lens=1,blower:S=>S.f.blower=1,lever:S=>S.d=Math.max(S.d,2),
+ext1:S=>S.rows=6,ext2:S=>S.cols=6,dock2:()=>dock(2),dock3:()=>dock(3),torch:S=>{S.d=Math.max(S.d,3);S.f.unseize=1},jack:S=>S.d=4,
+bot1:S=>S.bots[1]++,bot2:S=>S.bots[2]++,radio:()=>$('win').style.display='flex',aspd1:nop,aspd2:nop,pock1:nop,pock2:nop};
+let S,sel=null,drag=null,scrub=0,L=[],lastMoved=false,eq=null,px=0,py=0,lx=0,ly=0,lt=0,raf=0,lastS=0,PI=[],OBS=[],aacc=0,lastStat='';
+const def=()=>({d:1,cur:1,f:{},rows:4,cols:4,cr:[],bots:[0,0,0],g:[],seen:{},done:{},t:0,n:1,sp:0,nb:{},auto:false,pk:[]});
+try{S=JSON.parse(localStorage.getItem('junk1'))}catch(e){}
+if(!S||!S.g)S=def();S.nb=S.nb||{};S.pk=S.pk||[];S.auto=!!S.auto;
+const save=()=>{try{S.ts=Date.now();localStorage.setItem('junk1',JSON.stringify(S))}catch(e){}};
+const vis=r=>ST[r[0]]<=S.d-1&&(r[4]||!S.done[r[0]])&&(!PRE[r[0]]||S.done[PRE[r[0]]]);
+const pcap=()=>S.done.pock2?8:S.done.pock1?4:2,aint=()=>S.done.aspd2?12:S.done.aspd1?20:30;
+let ac;function snd(f=440,d=.08,ty='square',v=.04){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.type=ty;o.frequency.value=f;g.gain.value=v;g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d)}catch(e){}}
+function nz(d=.15,v=.08,f=1500){try{ac=ac||new AudioContext();const n=ac.sampleRate*d|0,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*(1-i/n);const s=ac.createBufferSource(),g=ac.createGain(),fl=ac.createBiquadFilter();fl.type='bandpass';fl.frequency.value=f;g.gain.value=v;s.buffer=b;s.connect(fl);fl.connect(g);g.connect(ac.destination);s.start()}catch(e){}}
+function burst(x,y,cols,n,sp,life=.6,sz=5){for(let i=0;i<n;i++){const e=document.createElement('i'),a=rr(0,6.283),d=rr(.3,1)*sp;e.className='pt';e.style.cssText=`left:${x}px;top:${y}px;width:${sz*rr(.6,1.4)}px;height:${sz*rr(.6,1.4)}px;background:${rnd(cols)};--dx:${Math.cos(a)*d}px;--dy:${Math.sin(a)*d+sp*.3}px;--r:${rr(-360,360)}deg;--l:${life*rr(.7,1.2)}s`;document.body.append(e);setTimeout(()=>e.remove(),life*1300)}}
+function log(m){L.unshift(m);L=L.slice(0,30);$('log').innerHTML=L.map(x=>'<div>'+x+'</div>').join('')}
+const see=t=>S.seen[t]=1;
+const fits=(t,x,y,ig)=>{const[,w,h]=I[t];if(x<0||y<0||x+w>S.cols||y+h>S.rows)return false;return!S.g.some(o=>o.id!=ig&&o.x<x+w&&x<o.x+I[o.t][1]&&o.y<y+h&&y<o.y+I[o.t][2])};
+const spot=t=>{for(let y=0;y<S.rows;y++)for(let x=0;x<S.cols;x++)if(fits(t,x,y))return[x,y]};
+const put=(t,x,y)=>{S.g.push({id:S.n++,t,x,y});see(t)};
+function give(t){const s=spot(t);if(s){put(t,...s);ui();snd(520)}else setTimeout(()=>give(t),600)}
+function unlockBP(){const n=R.filter(r=>ST[r[0]]==S.d-1);n.forEach(r=>S.nb[r[0]]=1);log('<b style="color:var(--g)">Milestone! New blueprints: '+n.map(r=>r[1]).join(', ')+'</b>');[523,659,784].forEach((f,i)=>setTimeout(()=>snd(f,.2,'triangle',.06),i*120))}
+function dock(k){for(let i=0;i<k;i++)S.cr.push({item:null,n:0,bot:0,acc:0})}
+function mk(t,cs){const[n,w,h,c]=I[t],e=document.createElement('div');e.className='it';e.title=n;e.style.cssText=`width:${w*cs-3}px;height:${h*cs-3}px;background:${c}2b;margin:1px`;e.innerHTML=art(t);return e}
+function find(p){for(const a of S.g)if(a.t==p[0][0]){const ox=a.x-p[0][1],oy=a.y-p[0][2],its=[];if(p.every(([t,x,y])=>{const o=S.g.find(q=>q.t==t&&q.x==ox+x&&q.y==oy+y);if(o)its.push(o);return o}))return its}}
+const matches=()=>R.filter(vis).map(r=>({r,its:find(r[2])})).filter(m=>m.its);
+function assemble(m){const[id,,,,out]=m.r,keep=[...S.g];S.g=S.g.filter(o=>!m.its.includes(o));
+ if(out){const s=spot(out);if(!s){S.g=keep;log('No room for the result. Free up grid space.');return}put(out,...s)}
+ else{const d0=S.d;S.done[id]=1;FX[id](S);if(S.d>d0)unlockBP()}
+ log('Assembled: '+m.r[1]);if(sel==id)sel=null;snd(90,.2,'sawtooth',.09);setTimeout(()=>snd(660,.15),120);ui()}
+// ---------- drawing
+function drawGrid(){const g=$('grid');g.style.width=S.cols*CS+'px';g.style.height=S.rows*CS+'px';g.innerHTML='';
+ const M=matches(),hl=new Set();M.forEach(m=>m.its.forEach(o=>hl.add(o.id)));
+ if(sel){const r=R.find(r=>r[0]==sel);r[2].forEach(([t,x,y])=>{const e=document.createElement('div');e.className='ghost';e.style.cssText=`left:${x*CS}px;top:${y*CS}px;width:${I[t][1]*CS}px;height:${I[t][2]*CS}px;color:${I[t][3]};border-color:${I[t][3]}`;e.textContent=I[t][0];g.append(e)})}
+ S.g.forEach(o=>{const e=mk(o.t,CS);e.style.left=o.x*CS+'px';e.style.top=o.y*CS+'px';if(hl.has(o.id))e.classList.add('hl');e.onpointerdown=ev=>startDrag(ev,{src:'g',o,t:o.t,e});g.append(e)});
+ M.forEach((m,i)=>{const xs=m.its.map(o=>o.x),ys=m.its.map(o=>o.y),x2=m.its.map(o=>o.x+I[o.t][1]),y2=m.its.map(o=>o.y+I[o.t][2]);
+  const b=document.createElement('button');b.className='asm';b.textContent='ASSEMBLE '+m.r[1];
+  b.style.left=(Math.min(...xs)+Math.max(...x2))/2*CS+'px';b.style.top=((Math.min(...ys)+Math.max(...y2))/2*CS+i*30)+'px';b.onclick=()=>assemble(m);g.append(b)})}
+function drawBelt(){const b=$('belt');b.innerHTML='<b class="bl">Toolbelt</b>';
+ Object.keys(TL).forEach(k=>{const T=TL[k],open=S.done[T.rid],s=document.createElement('div');
+  s.className='slot'+(open?'':' lock')+(eq==k?' held':'');s.title=open?'Click and hold to equip':'Locked: craft the '+T.n;
+  s.innerHTML=TI[k]+`<small>${open?T.n:'Locked'}</small>`;
+  s.onpointerdown=ev=>{ev.preventDefault();try{s.releasePointerCapture(ev.pointerId)}catch(e){}
+   if(open){equip(k,ev);s.classList.add('held')}else{log('Craft the '+T.n+' to unlock this slot.');snd(110,.08,'sawtooth',.05)}};
+  b.append(s)})}
+function drawAuto(){const cap=pcap(),box=$('pockets');box.innerHTML='';
+ for(let i=0;i<cap;i++){const o=S.pk[i],s=document.createElement('div');s.className='pk'+(o?' f':'');
+  if(o){const[,w,h]=I[o.t],e=mk(o.t,Math.min(40/Math.max(w,h),24));s.append(e);s.onpointerdown=ev=>startDrag(ev,{src:'k',o,t:o.t,e});s.onclick=()=>pkTake(o)}
+  box.append(s)}
+ $('auto').className=S.auto?'on':'';$('takeall').disabled=!S.pk.length;statText()}
+function statText(){const f=S.pk.length>=pcap(),t=!S.auto?'OFF':f?'POCKETS FULL':'ON · sweep every '+aint()+'s';if(t!==lastStat){lastStat=t;$('astat').textContent=t}}
+function pkTake(o){const s=spot(o.t);
+ if(s){put(o.t,...s);S.pk=S.pk.filter(x=>x!==o);snd(400,.05);ui();return}
+ const c=S.cr.find(c=>c.item==o.t)||S.cr.find(c=>!c.item);
+ if(c){c.item=o.t;c.n++;S.pk=S.pk.filter(x=>x!==o);snd(260,.08);ui()}else log('No room in the grid or crates.')}
+function ui(){
+ $('tabs').innerHTML='';for(let d=1;d<=4;d++){const b=document.createElement('button');b.textContent=d+'. '+DN[d];b.className='tp'+(S.cur==d?' on':'')+(d>S.d?' lk':'');b._tip=d>S.d?'Locked. Craft the '+NEED[d]+' to open.':'<b>Can find here:</b><br>'+[...new Set(DROPS[d])].map(t=>`<span style="color:${I[t][3]};font-weight:700">${I[t][0]}</span>`).join(', ');b.onclick=()=>{if(d>S.d)return;S.cur=d;ui()};$('tabs').append(b)}
+ $('bench').innerHTML=Object.keys(BN).map(k=>`<div class="bench ${S.f[k]?'up':'lock'} ${k=='cleaner'&&scrub?'scrub':''}" data-b="${k}"><b>${S.f[k]?BN[k][0]:'Locked'}</b><br><small>${S.f[k]?'drop '+BN[k][1]:'&nbsp;'}</small></div>`).join('');
+ drawGrid();drawBelt();drawAuto();
+ $('crates').innerHTML=S.cr.length?'':'<small>Craft a Crate Dock to unlock.</small>';
+ S.cr.forEach((c,i)=>{const e=document.createElement('div');e.className='crate'+(c.item?'':' e');e.dataset.i=i;
+  e.innerHTML=c.item?`${I[c.item][0]}<br><b id="cn${i}">${c.n}</b>${c.bot?'<br><small>Bot v'+c.bot+'</small>':''}`:'Empty<br><small>drop an item</small>';
+  e.onpointerdown=ev=>{lastMoved=false;if(c.n>0&&c.item&&!ev.target.closest('button'))startDrag(ev,{src:'c',c,t:c.item,e})};
+  e.onclick=()=>{if(lastMoved){lastMoved=false;return}if(c.n>0){const s=spot(c.item);if(s){put(c.item,...s);c.n--;if(!c.n&&!c.bot)c.item=null;snd(400,.05);ui()}else log('Grid is full.')}};
+  [1,2].forEach(t=>{if(S.bots[t]>0&&c.item&&EL[t].includes(c.item)&&c.bot<t&&!(t==1&&c.bot)){const b=document.createElement('button');b.textContent='+ Bot v'+t;b.onclick=ev=>{ev.stopPropagation();S.bots[t]--;if(c.bot)S.bots[c.bot]++;c.bot=t;ui()};e.append(b)}});
+  $('crates').append(e)});
+ const rdy=new Set(matches().map(m=>m.r[0]));
+ $('bps').innerHTML='';R.forEach(r=>{if(!vis(r))return;const cnt={};r[2].forEach(p=>cnt[p[0]]=(cnt[p[0]]||0)+1);
+  const e=document.createElement('div');e.className='bp tp'+(sel==r[0]?' s':'')+(rdy.has(r[0])?' rdy':'');e._tip=r[3];
+  e.innerHTML=`<span class="nm">${r[1]}${S.nb[r[0]]?'<span class="tag nw">NEW</span>':''}${rdy.has(r[0])?'<span class="tag rd">READY</span>':''}</span><div class="igs">${Object.entries(cnt).map(([t,n])=>`<span class="ig"><span class="ic">${art(t)}</span><span style="color:${I[t][3]}">${n}x ${I[t][0]}</span></span>`).join('')}</div>`;
+  e.onmouseenter=()=>{if(S.nb[r[0]]){delete S.nb[r[0]];const n=e.querySelector('.nw');n&&n.remove()}};
+  e.onclick=()=>{sel=sel==r[0]?null:r[0];drawGrid();ui()};$('bps').append(e)});
+ save()}
+// ---------- pile
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function pileItem(t,x,y,z){const e=mk(t,CS),[,w,h]=I[t],d={src:'p',t,e,x,y,w,h,ob:null};e.style.left=x+'px';e.style.top=y+'px';e.style.zIndex=z;e.onpointerdown=ev=>startDrag(ev,d);$('pile').append(e);PI.push(d);return d}
+function mkOb(k,d,W,H){const B=OB[k],w=Math.max(B.w,d.w*CS+16),h=Math.max(B.h,d.h*CS+16),cx=d.x+d.w*CS/2,cy=d.y+d.h*CS/2,e=document.createElement('div');
+ e.className='ob';e.style.cssText=`left:${clamp(cx-w/2,0,W-w)}px;top:${clamp(cy-h/2,0,H-h)}px;width:${w}px;height:${h}px`;
+ e.innerHTML=`<svg viewBox="0 0 ${w} ${h}">${OA[k](w,h)}</svg><i class="pb"><b></b></i>`;
+ const o={k,tool:B.tool,e,prog:0,item:d,done:0};e._o=o;
+ e.onpointerdown=ev=>{hover(ev.clientX,ev.clientY);if(eq!==o.tool)snd(110,.08,'sawtooth',.05)};
+ OBS.push(o);d.ob=o;$('pile').append(e);return o}
+function spawn(){const P=$('pile');P.innerHTML='';PI=[];OBS=[];const W=P.clientWidth,H=P.clientHeight,hm=Math.min(H-30,W*.85),bw=Math.min(W/2-10,hm*.8),ay=H-15-hm;
+ const mound=fm=>{const f=Math.sqrt(rr(fm*fm,1));return[W/2+rr(-.9,.9)*bw*f,ay+f*hm]};
+ const bd=document.createElement('div');bd.style.cssText=`position:absolute;left:${W/2-bw}px;top:${ay}px;width:${bw*2}px;height:${hm}px;background:#1a1c21;clip-path:polygon(50% 0,100% 100%,0 100%)`;P.append(bd);
+ for(let i=0;i<48;i++){const[x,y]=mound(0),s=rr(18,38),e=document.createElement('div');e.style.cssText=`position:absolute;pointer-events:none;width:${s}px;height:${s*.7}px;left:${x-s/2}px;top:${y-s/2}px;background:${rnd(['#2b2d33','#33302d','#26282d'])};clip-path:polygon(10% 0,100% 20%,85% 100%,0 80%)`;P.append(e)}
+ const nI=rnd([2,2,4]),cs=[],rects=[],types=OBT.slice(0,Math.min(3,S.cur));
+ for(let i=0;i<nI;i++){const t=rnd(DROPS[S.cur]),[,w,h]=I[t];let x,y;
+  for(let k=0;k<25;k++){const[mx,my]=mound(.45);x=clamp(mx-w*CS/2,5,W-w*CS-5);y=clamp(my-h*CS/2,5,H-h*CS-5);if(!rects.some(r=>x<r[0]+r[2]+40&&r[0]<x+w*CS+40&&y<r[1]+r[3]+40&&r[1]<y+h*CS+40))break}
+  rects.push([x,y,w*CS,h*CS]);const d=pileItem(t,x,y,1);see(t);cs.push([x+w*CS/2,y+h*CS/2]);
+  if(i>0&&Math.random()<.7)mkOb(rnd(types),d,W,H);
+  if(S.f.lens){const r=document.createElement('div');r.className='ring';r.style.cssText=`left:${x-3}px;top:${y-3}px;width:${w*CS+6}px;height:${h*CS+6}px;animation-delay:${rr(0,2)}s`;P.append(r);d.ring=r}}
+ const n=(5+(Math.random()*3|0))*3;
+ for(let i=0;i<n+nI;i++){const s=rr(60,90),near=i<nI*2?cs[i%nI]:null,[mx,my]=mound(0),cx=near?near[0]+rr(-25,25):mx,cy=near?near[1]+rr(-25,25):my;
+  const e=document.createElement('div');e.className='tr';e.style.cssText=`width:${s}px;height:${s*rr(.7,1)}px;left:${cx-s/2}px;top:${cy-s/2}px;background:${rnd(['#4A4A4A','#555','#5a3a28','#4a4038'])};clip-path:${rnd(['polygon(10% 0,90% 10%,100% 70%,60% 100%,0 80%)','polygon(0 20%,40% 0,100% 30%,85% 100%,15% 90%)','polygon(20% 0,100% 0,90% 80%,40% 100%,0 60%)','polygon(0 0,70% 10%,100% 50%,70% 100%,10% 90%)'])}`;
+  e.onpointerdown=ev=>startDrag(ev,{src:'t',e});P.append(e)}
+ if(Math.random()<.15){const u=document.createElement('div'),k=document.createElement('button');u.className='unst';u.textContent='UNSTABLE PILE';k.className='ko';k.textContent='[ KNOCK OVER ]';k.onclick=()=>knock(u,k);P.append(u,k);log('<b style="color:#f87171">This pile looks unstable. Knock it over to shed some trash.</b>')}
+ snd(150,.1,'triangle',.06);ui()}
+function knock(u,k){u.remove();k.remove();const P=$('pile'),all=[...P.querySelectorAll('.tr')].sort(()=>Math.random()-.5),n=Math.round(all.length*rr(.4,.5));
+ all.slice(0,n).forEach((e,i)=>{const dir=e.offsetLeft+e.offsetWidth/2<P.clientWidth/2?-1:1;e.style.pointerEvents='none';
+  setTimeout(()=>{e.style.transition='transform 1s cubic-bezier(.4,0,.9,.5),opacity 1s ease-in';e.style.transform=`translate(${dir*rr(60,220)}px,${rr(200,420)}px) rotate(${dir*rr(120,540)}deg)`;e.style.opacity=0;setTimeout(()=>e.remove(),1050)},i*25+rr(0,150))});
+ P.classList.add('quake');setTimeout(()=>P.classList.remove('quake'),750);nz(.9,.16,180);snd(70,.5,'sawtooth',.08);log('The pile tumbles! '+n+' pieces of trash slide away.')}
+const rmTrash=e=>{e.classList.add('pop');setTimeout(()=>e.remove(),160);snd(300,.05,'triangle')};
+// ---------- toolbelt
+function mvc(){$('tc').style.transform=`translate(${px-7}px,${py-7}px)`}
+function equip(k,ev){eq=k;px=lx=ev.clientX;py=ly=ev.clientY;document.body.classList.add('eq');const c=$('tc');c.className=k=='jack'?'jk':'';c.innerHTML=(k=='torch'?'<i class="flame"></i>':'')+TI[k];c.style.display='block';mvc();lt=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);hover(px,py);snd(220,.06,'triangle',.05)}
+function unequip(){if(!eq)return;eq=null;cancelAnimationFrame(raf);document.body.classList.remove('eq');$('tc').style.display='none';$('tip').style.display='none';document.querySelectorAll('.slot.held').forEach(s=>s.classList.remove('held'))}
+function hover(x,y){const t=$('tip'),el=document.elementFromPoint(x,y),b=el&&el.closest&&el.closest('.ob'),p=!b&&el&&el.closest&&el.closest('.tp');let h=null;
+ if(b&&b._o&&eq!==b._o.tool)h='Requires '+TL[b._o.tool].n+' to open';else if(p&&!eq&&!drag)h=p._tip;
+ if(h){if(t._h!==h){t.innerHTML=h;t._h=h}t.style.display='block';const w=t.offsetWidth,hh=t.offsetHeight;let tx=x+14,ty=y+(eq?34:16);if(tx+w>innerWidth-6)tx=x-w-14;if(ty+hh>innerHeight-4)ty=y-hh-10;t.style.left=Math.max(4,tx)+'px';t.style.top=Math.max(4,ty)+'px'}else t.style.display='none'}
+function loop(t){if(!eq)return;const dt=Math.min(.05,(t-lt)/1000);lt=t;work(dt,t);raf=requestAnimationFrame(loop)}
+function work(dt,now){const mv=Math.hypot(px-lx,py-ly);lx=px;ly=py;
+ const el=document.elementFromPoint(px,py),b=el&&el.closest&&el.closest('.ob'),o=b&&b._o;
+ if(!o||o.tool!==eq||o.done)return;
+ if(eq=='crowbar'){if(mv<1)return;o.prog+=mv*.55;b.style.transform=`rotate(${rr(-3,3)}deg)`;if(now-lastS>80){lastS=now;snd(rr(160,260),.05,'sawtooth',.03)}if(Math.random()<.25)burst(px,py,['#b07a40','#d4a574'],2,30,.4,4)}
+ else if(eq=='torch'){o.prog+=dt*100/1.5;const p=Math.min(1,o.prog/100);b.style.filter=`drop-shadow(0 0 ${p*12}px #f97316) sepia(${p*.8}) saturate(${1+p*3}) brightness(${1+p*.7})`;b.style.transform=`scale(${1-p*.2})`;if(Math.random()<.6)burst(px,py,['#f97316','#fbbf24','#fff'],1,40,.5,4);if(now-lastS>70){lastS=now;nz(.06,.05,3000)}}
+ else{o.prog+=dt*100/1.5;b.style.transform=`translate(${rr(-3,3)}px,${rr(-3,3)}px) rotate(${rr(-1.5,1.5)}deg)`;if(Math.random()<.5)burst(px,py,['#9aa0a8','#cbd5e1'],1,35,.5,4);if(now-lastS>65){lastS=now;snd(rr(60,90),.04,'square',.05)}}
+ o.prog=Math.min(100,o.prog);const pb=b.querySelector('.pb');pb.style.display='block';pb.firstChild.style.width=o.prog+'%';
+ if(o.prog>=100)finish(o)}
+function finish(o){o.done=1;const b=o.e,r=b.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2,P=$('pile');b.style.pointerEvents='none';b.querySelector('.pb').style.display='none';
+ if(o.tool=='crowbar'){burst(cx,cy,['#a16a35','#8b5a2b','#d4a574','#5c3a17'],18,90,.7,7);nz(.25,.12,900);snd(160,.1,'sawtooth',.06);b.style.transition='transform .25s,opacity .25s';b.style.transform='scale(1.25) rotate(8deg)';b.style.opacity=0;log('The crate splinters open!')}
+ else if(o.tool=='torch'){burst(cx,cy,['#f97316','#fbbf24','#475569'],14,60,.8,5);snd(500,.2,'triangle',.05);b.style.transition='transform .5s,opacity .5s';b.style.transform='scale(.3) translateY(30px)';b.style.opacity=0;log('The iron plate melts away.')}
+ else{burst(cx,cy,['#9aa0a8','#6b7280','#d1d5db'],26,110,.8,6);nz(.4,.14,300);b.style.transition='opacity .25s';b.style.opacity=0;
+  for(let i=0;i<7;i++){const s=rr(18,30),g=document.createElement('div');g.className='tr';g.style.cssText=`width:${s}px;height:${s*rr(.7,1)}px;left:${b.offsetLeft+rr(0,Math.max(1,b.offsetWidth-s))}px;top:${b.offsetTop+rr(0,Math.max(1,b.offsetHeight-s))}px;background:${rnd(['#8b9099','#6b7078','#a0a5ad','#7a7f88'])};clip-path:${rnd(['polygon(10% 0,90% 10%,100% 70%,60% 100%,0 80%)','polygon(0 20%,40% 0,100% 30%,85% 100%,15% 90%)'])}`;g.onpointerdown=ev=>startDrag(ev,{src:'t',e:g});P.append(g)}
+  log('The concrete shatters into gravel. Swipe it away.')}
+ o.item.ob=null;o.item.e.style.zIndex=8;o.item.e.classList.add('rev');OBS=OBS.filter(x=>x!==o);setTimeout(()=>b.remove(),o.tool=='torch'?520:300)}
+// ---------- drag & drop
+function startDrag(ev,d){ev.preventDefault();drag=d;d.sx=ev.clientX;d.sy=ev.clientY;d.mv=false;lastMoved=false;const r=d.e.getBoundingClientRect();d.ox=ev.clientX-r.left;d.oy=ev.clientY-r.top;
+ if(d.src=='t'){if(S.f.blower){drag=null;rmTrash(d.e);return}d.e.style.zIndex=9;return}
+ if(d.src=='k'||d.src=='c')d.ox=d.oy=CS/2;
+ d.gh=mk(d.t,CS);Object.assign(d.gh.style,{position:'fixed',pointerEvents:'none',zIndex:99,left:ev.clientX-d.ox+'px',top:ev.clientY-d.oy+'px'});document.body.append(d.gh);d.e.style.opacity=.3;document.querySelectorAll('.crate').forEach(e=>{if(S.cr[+e.dataset.i].item==d.t)e.classList.add('glow')})}
+addEventListener('pointermove',ev=>{px=ev.clientX;py=ev.clientY;if(eq)mvc();hover(px,py);if(!drag)return;const d=drag;if(!d.mv&&Math.hypot(ev.clientX-d.sx,ev.clientY-d.sy)>5)d.mv=true;
+ if(d.src=='t'){const pr=$('pile').getBoundingClientRect();d.e.style.left=ev.clientX-pr.left-d.ox+'px';d.e.style.top=ev.clientY-pr.top-d.oy+'px'}
+ else{d.gh.style.left=ev.clientX-d.ox+'px';d.gh.style.top=ev.clientY-d.oy+'px'}});
+const take=d=>{if(d.src=='p'){d.e.remove();d.ring&&d.ring.remove()}else if(d.src=='k')S.pk=S.pk.filter(o=>o!==d.o);else if(d.src=='c'){d.c.n--;if(!d.c.n&&!d.c.bot)d.c.item=null}else S.g=S.g.filter(o=>o!==d.o)};
+function endDrag(ev){if(!drag)return;const d=drag;drag=null;lastMoved=!!d.mv;
+ if(d.src=='t'){const r=$('pile').getBoundingClientRect();if(ev.clientX<r.left||ev.clientX>r.right||ev.clientY<r.top||ev.clientY>r.bottom)rmTrash(d.e);else d.e.style.zIndex='';return}
+ d.gh.remove();d.e.style.opacity='';document.querySelectorAll('.glow').forEach(e=>e.classList.remove('glow'));
+ const tg=document.elementFromPoint(ev.clientX,ev.clientY),b=tg&&tg.closest('.bench'),c=tg&&tg.closest('.crate');
+ if(b)return bench(b.dataset.b,d);
+ if(c){const tc=S.cr[+c.dataset.i];if(d.src=='c'&&tc===d.c)return;return crateIn(tc,d)}
+ const pr=$('pile').getBoundingClientRect();
+ const onP=ev.clientX>=pr.left&&ev.clientX<=pr.right&&ev.clientY>=pr.top&&ev.clientY<=pr.bottom;
+ if(d.src=='k'&&onP){take(d);snd(140,.1,'triangle');nz(.12,.05,600);log('Discarded '+I[d.t][0]+'.');ui();return}
+ if(d.src=='g'&&onP){take(d);const[,w,h]=I[d.t];pileItem(d.t,clamp(ev.clientX-d.ox-pr.left,0,pr.width-w*CS),clamp(ev.clientY-d.oy-pr.top,0,pr.height-h*CS),4);snd(140,.1,'triangle');ui();return}
+ const gr=$('grid').getBoundingClientRect();
+ if(ev.clientX<gr.left||ev.clientX>gr.right||ev.clientY<gr.top||ev.clientY>gr.bottom)return;
+ const x=Math.round((ev.clientX-d.ox-gr.left)/CS),y=Math.round((ev.clientY-d.oy-gr.top)/CS);
+ if(fits(d.t,x,y,d.src=='g'?d.o.id:0)){if(d.src=='g'){d.o.x=x;d.o.y=y}else{take(d);put(d.t,x,y)}snd(350,.05);ui()}else{snd(120,.1,'sawtooth');log('Does not fit there.')}}
+addEventListener('pointerup',ev=>{endDrag(ev);unequip();if(ev.pointerType!='mouse')$('tip').style.display='none'});addEventListener('pointercancel',ev=>{endDrag(ev);unequip()});addEventListener('blur',unequip);
+function bench(b,d){if(!S.f[b]||d.t!=BI[b]){log('That bench cannot take '+I[d.t][0]+'.');return}
+ take(d);snd(200,.12,'sawtooth',.07);
+ if(b=='vice')give('bar');else if(b=='unseize')give('motor');
+ else if(b=='cleaner'){scrub++;setTimeout(()=>{scrub--;give('chip')},1000)}
+ else give('coil');
+ ui()}
+function crateIn(c,d){if(!c)return;if(c.item&&c.item!=d.t){log('That crate holds '+I[c.item][0]+'.');return}
+ c.item=d.t;c.n++;take(d);snd(260,.08);ui()}
+// ---------- auto search
+function sweep(){const P=$('pile'),t=rnd(DROPS[S.cur]);S.pk.push({id:S.n++,t});see(t);
+ const tr=[...P.querySelectorAll('.tr')];
+ if(tr.length)rmTrash(rnd(tr));
+ else if(!drag&&!eq&&!PI.some(d=>d.e.isConnected&&(!d.ob||S.done[TL[d.ob.tool].rid])))spawn();
+ snd(260,.05,'triangle',.03);if(!drag)drawAuto();save()}
+$('takeall').onclick=()=>{[...S.pk].forEach(o=>pkTake(o))};
+$('auto').onclick=()=>{S.auto=!S.auto;aacc=0;drawAuto();save()};
+setInterval(()=>{const f=S.pk.length>=pcap(),n=aint();
+ if(S.auto&&!f){aacc+=.1;if(aacc>=n){aacc=0;sweep()}}
+ $('apb').style.width=(S.auto&&!f?Math.min(100,aacc/n*100):0)+'%';statText()},100);
+// ---------- loops
+$('next').onclick=spawn;
+$('rs').onclick=()=>{if(confirm('Erase all progress?')){try{localStorage.removeItem('junk1')}catch(e){}location.reload()}};
+setInterval(()=>{S.cr.forEach((c,i)=>{if(c.bot&&c.item){c.acc+=.5;if(c.acc>=(c.bot==1?5:3)){c.acc=0;c.n++;const e=$('cn'+i);if(e)e.textContent=c.n}}})},500);
+setInterval(save,5000);
+(function(){const dt=S.ts?Math.min((Date.now()-S.ts)/1000,28800):0;if(dt<60)return;let got=0,pk=0;
+ S.cr.forEach(c=>{if(c.bot&&c.item){const n=Math.floor(dt/(c.bot==1?5:3));c.n+=n;got+=n}});
+ if(S.auto){const n=Math.min(Math.floor(dt/aint()),pcap()-S.pk.length);for(let i=0;i<n;i++){S.pk.push({id:S.n++,t:rnd(DROPS[S.cur])});pk++}}
+ if(got||pk)setTimeout(()=>log('<b style="color:var(--g)">Welcome back! Away '+Math.round(dt/60)+' min: bots made '+got+' items'+(S.auto?', auto-search found '+pk:'')+'.</b>'),0)})();
+log('Dig through piles, clear the trash, collect scrap. Click a blueprint to see its layout.');
+ui();setTimeout(spawn,50);
+</script></body></html>
